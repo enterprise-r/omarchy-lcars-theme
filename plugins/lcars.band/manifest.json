@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "lcars.band",
+  "name": "LCARS Band",
+  "version": "1.0.0",
+  "author": "Yoav",
+  "description": "A compact structural endcap for the LCARS theme",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Band.qml"
+  },
+  "barWidget": {
+    "displayName": "LCARS Band",
+    "category": "Layout",
+    "allowMultiple": true,
+    "defaultSection": "right"
+  }
+}

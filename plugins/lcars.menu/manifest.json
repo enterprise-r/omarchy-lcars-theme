@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "lcars.menu",
+  "name": "LCARS Menu",
+  "version": "1.0.0",
+  "author": "Omarchy",
+  "description": "Quickshell-powered Omarchy command menu",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "LCARS Menu",
+    "description": "Launches the Omarchy menu",
+    "category": "Compositor",
+    "allowMultiple": false
+  }
+}
