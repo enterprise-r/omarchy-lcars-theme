@@ -70,10 +70,10 @@ border = "#efb18b"
 border-width = "4 1 1"
 scrim = "#08090c"
 scrim-alpha = 0.55
-selected-background = "#efb18b"
+selected-background = "#98c5a3"
 selected-background-alpha = 1.0
 selected-text = "#08090c"
-selected-border = "#efb18b"
+selected-border = "#98c5a3"
 selected-border-alpha = 1.0
 
 [lock]
