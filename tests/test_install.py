@@ -36,6 +36,7 @@ class Installation(unittest.TestCase):
     def test_round_trip_preserves_unrelated_changes(self):
         self.install()
         d = json.loads(self.shell.read_text())
+        self.assertEqual(d['bar']['layout']['center'][0]['format'], 'HH:mm')
         self.assertEqual(d['idle'], BASE['idle'])
         self.assertEqual(d['plugins'], BASE['plugins'])
         self.assertEqual(d['bar']['layout']['center'][0]['timezone'], 'Europe/Zurich')

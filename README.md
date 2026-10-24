@@ -3,7 +3,7 @@
 **A quiet view at warp.**
 
 A complete Star Trek–inspired desktop for Omarchy: peach and lavender panels,
-a live STARDATE clock, readable dark terminals, and a starfield that travels
+readable dark terminals, and a starfield that travels
 outward behind the entire bar. The stars begin as distant points and stretch
 into icy-white trails as they approach the edges.
 
@@ -32,7 +32,7 @@ your bar may differ from the screenshots.
 
 Built-in menu, calendar, workspace switching, network, audio, brightness, and
 battery actions remain functional. LCARS adds no network service and no audio.
-The clock's playful `STARDATE SAT 19:10` label shows the real local day and time.
+The clock keeps the label already in your shell configuration.
 
 ## Choose your level of immersion
 

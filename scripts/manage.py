@@ -69,8 +69,6 @@ def patch_shell(original, animation=True):
                 target = source.replace('omarchy.', 'lcars.', 1)
                 changed[target] = copy.deepcopy(entry)
                 entry['id'] = target
-                if target == 'lcars.clock':
-                    entry['format'] = "'STARDATE' ddd HH:mm"
     anchor = d['bar'].get('centerAnchor')
     if anchor == 'omarchy.clock' and 'lcars.clock' in changed:
         d['bar']['centerAnchor'] = 'lcars.clock'
@@ -94,6 +92,7 @@ def unpatch_shell(current, record):
                 entry = copy.deepcopy(entry)
                 before = record['replaced'][target]
                 entry['id'] = before['id']
+                # Installs before the label was left alone wrote this prefix.
                 if target == 'lcars.clock' and entry.get('format') == "'STARDATE' ddd HH:mm":
                     if 'format' in before:
                         entry['format'] = before['format']

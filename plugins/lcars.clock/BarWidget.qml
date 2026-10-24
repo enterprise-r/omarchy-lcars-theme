@@ -145,13 +145,12 @@ BarWidget {
     anchors.fill: parent
     bar: root.bar
     text: root.vertical ? "" : (root.lcars ? root.displayText.toUpperCase() : root.displayText)
-    fontFamily: root.lcars ? "Nimbus Sans Narrow" : (root.bar ? root.bar.fontFamily : Style.font.family)
-    fontSize: root.lcars ? 16 : Style.font.body
-    foreground: root.lcars ? "#b4a0df" : (root.bar ? root.bar.barForeground : Color.foreground)
+    foreground: root.lcars ? "#08090c" : (root.bar ? root.bar.barForeground : Color.foreground)
     labelVisible: !root.vertical
     hasVisualContent: root.vertical ? root.verticalLines.length > 0 : text !== ""
     fixedHeight: root.vertical ? root.verticalLines.length * Style.bar.iconSlot : -1
-    horizontalMargin: root.lcars ? 20 : 8.75
+    // Clears the capsule ends. Plate height and radius match the menu pill.
+    horizontalMargin: root.lcars ? 16 : 8.75
     verticalPadding: 8.75
 
     onPressed: function(b) {
@@ -162,23 +161,16 @@ BarWidget {
 
     Rectangle {
       visible: root.lcars && !root.vertical
+      z: -1
       anchors.left: parent.left
-      anchors.verticalCenter: parent.verticalCenter
-      width: 11
-      height: parent.height - 8
-      topLeftRadius: 12
-      bottomLeftRadius: 12
-      color: "#b4a0df"
-    }
-    Rectangle {
-      visible: root.lcars && !root.vertical
       anchors.right: parent.right
-      anchors.verticalCenter: parent.verticalCenter
-      width: 11
-      height: parent.height - 8
-      topRightRadius: 12
-      bottomRightRadius: 12
-      color: "#b4a0df"
+      anchors.top: parent.top
+      height: parent.height - 2
+      radius: 12
+      // Workspace 05's chip. Hover keeps the capsule's previous lavender as a border.
+      color: "#756986"
+      border.width: button.tooltipHovered ? 1 : 0
+      border.color: "#b4a0df"
     }
     Column {
       visible: root.vertical
