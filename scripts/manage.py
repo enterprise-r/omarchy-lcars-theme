@@ -12,7 +12,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCES = ['menu', 'clock', 'workspaces', 'bluetooth', 'network', 'audio', 'monitor', 'power', 'weather', 'keyboard-layout']
+SOURCES = ['menu', 'clock', 'workspaces', 'bluetooth', 'network', 'audio', 'monitor', 'power', 'weather', 'keyboard-layout', 'system-update']
 THEME_FILES = ['colors.toml', 'shell.toml', 'hyprland.lua', 'alacritty.toml', 'ghostty.conf', 'kitty.conf', 'foot.ini']
 
 def write_json(path, data):
