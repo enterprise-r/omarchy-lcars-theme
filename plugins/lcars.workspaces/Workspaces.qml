@@ -63,8 +63,6 @@ BarWidget {
         bar: root.bar
         text: root.lcars ? String(modelData).padStart(2, "0") : (focused ? "\uDB85\uDCFB" : (modelData === 10 ? "0" : String(modelData)))
         foreground: root.lcars ? "#08090c" : (root.bar ? root.bar.barForeground : Color.foreground)
-        fontFamily: root.lcars ? "Nimbus Sans Narrow" : (root.bar ? root.bar.fontFamily : Style.font.family)
-        fontSize: root.lcars ? 15 : Style.font.body
         tooltipText: "Workspace " + modelData + (occupied ? " · " + workspace.toplevels.values.length + " windows" : " · empty")
         opacity: root.lcars ? 1 : (occupied || focused ? 1 : 0.5)
         horizontalMargin: 6
@@ -75,16 +73,18 @@ BarWidget {
         Rectangle {
           visible: root.lcars
           z: -1
-          anchors.centerIn: parent
+          anchors.horizontalCenter: parent.horizontalCenter
+          anchors.top: parent.top
           width: parent.width
-          height: parent.height - 8
+          height: parent.height - 2
           topLeftRadius: segment.modelData === 1 ? 12 : 2
           bottomLeftRadius: topLeftRadius
           topRightRadius: segment.modelData === root.workspaceIds()[root.workspaceIds().length - 1] ? 12 : 2
           bottomRightRadius: topRightRadius
           color: segment.focused ? "#f2ba64" : (segment.occupied ? "#b4a0df" : "#756986")
           border.width: segment.tooltipHovered ? 1 : 0
-          border.color: "#fff3e6"
+          // Same lavender as the clock capsule's hover border.
+          border.color: "#b4a0df"
           Behavior on color { ColorAnimation { duration: 120 } }
         }
       }
