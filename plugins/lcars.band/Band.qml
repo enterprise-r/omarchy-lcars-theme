@@ -17,6 +17,6 @@ BarWidget {
     bottomLeftRadius: topLeftRadius
     topRightRadius: root.setting("end", "left") === "right" ? height / 2 : 1
     bottomRightRadius: topRightRadius
-    color: root.setting("color", "#efb18b")
+    color: root.setting("color", "#f2ba64")
   }
 }

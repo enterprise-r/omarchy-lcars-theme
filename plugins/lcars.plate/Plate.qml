@@ -29,6 +29,22 @@ BarWidget {
   implicitWidth: 0
   implicitHeight: barSize
 
+  // Tracks the pointer across the whole bar, then keeps the border for the
+  // plate's own rectangle. A handler here does not take clicks from the modules.
+  HoverHandler {
+    id: plateHover
+    parent: root.barSurface ? root.barSurface : root
+    blocking: false
+  }
+  function pointerInsidePlate() {
+    if (!plateHover.hovered || plateRect.width < 1 || plateHover.parent !== plateRect.parent)
+      return false
+    var p = plateHover.point.position
+    return p.x >= plateRect.x && p.x < plateRect.x + plateRect.width
+        && p.y >= plateRect.y && p.y < plateRect.y + plateRect.height
+  }
+  readonly property bool pointerOverPlate: pointerInsidePlate()
+
   function place() {
     var row = root.hostRow
     var surface = root.barSurface
@@ -38,8 +54,6 @@ BarWidget {
     }
     var left = Infinity
     var right = -Infinity
-    var top = 0
-    var slotHeight = 0
     for (var i = 0; i < row.children.length; i++) {
       var child = row.children[i]
       if (!child || child.width < 1 || child.height < 1) continue
@@ -50,23 +64,34 @@ BarWidget {
       if (origin.x < left) left = origin.x
       var end = origin.x + child.width
       if (end > right) right = end
-      top = origin.y
-      slotHeight = child.height
     }
-    if (left === Infinity || right <= left || slotHeight < 1) {
+    if (left === Infinity || right <= left) {
       plateRect.width = 0
       return
     }
-    var h = Math.max(0, slotHeight - 2)
+    // Menu, workspace, and clock capsules are barSize - 2, flush with the
+    // top of the bar. This row is vertically centered, so a taller slot
+    // shifts every module upward and a plate that follows them ends short
+    // of those capsules.
+    var h = root.barSize - 2
+    if (h < 1) {
+      plateRect.width = 0
+      return
+    }
     plateRect.parent = surface
     plateRect.x = left
-    plateRect.y = top
-    plateRect.width = right - left
+    plateRect.y = 0
+    // RightModules keeps a space(8) margin. The plate continues through it
+    // to the screen edge; the modules themselves stay where they are.
+    plateRect.width = Math.max(0, surface.width - left)
     plateRect.height = h
   }
 
   onBarSurfaceChanged: Qt.callLater(root.place)
   Component.onCompleted: Qt.callLater(root.place)
+  // place() reparents the plate onto the bar. Drop that copy on the way out
+  // so a reload cannot leave the old plate behind.
+  Component.onDestruction: if (plateRect && plateRect.parent !== root) plateRect.destroy()
 
   Connections {
     target: root.hostRow
@@ -95,6 +120,8 @@ BarWidget {
     z: -1
     visible: root.lcars && !root.vertical && width > 0
     radius: 12
-    color: "#181820"
+    color: Color.background
+    border.width: root.pointerOverPlate ? 1 : 0
+    border.color: "#98c5a3"
   }
 }

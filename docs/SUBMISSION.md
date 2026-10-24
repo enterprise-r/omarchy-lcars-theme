@@ -8,7 +8,7 @@ https://learn.omacom.io/books/2/pages/92
 
 I'd like to share **LCARS for Omarchy — a quiet view at warp**.
 
-It combines classic peach/lavender LCARS panels with an animated starfield
+It combines classic orange and lavender LCARS panels with an animated starfield
 behind the entire bar. Stars travel outward from behind
 the clock, growing into white-blue trails. It is designed for everyday coding,
 with restrained transparency and working native system controls.

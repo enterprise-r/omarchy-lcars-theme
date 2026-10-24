@@ -2,7 +2,7 @@
 
 **A quiet view at warp.**
 
-A complete Star Trek–inspired desktop for Omarchy: peach and lavender panels,
+A complete Star Trek–inspired desktop for Omarchy: orange and lavender panels,
 readable dark terminals, and a starfield that travels
 outward behind the entire bar. The stars begin as distant points and stretch
 into icy-white trails as they approach the edges.

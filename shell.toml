@@ -8,22 +8,22 @@ size-horizontal = 32
 size-vertical = 32
 
 [controls]
-normal-color = "#b4a0df"
+normal-color = "#a5ace1"
 normal-fill-alpha = 0.06
-normal-border = "#b4a0df"
+normal-border = "#a5ace1"
 normal-border-alpha = 0.28
 normal-border-width = 1
-hover-cursor-color = "#efb18b"
+hover-cursor-color = "#f2ba64"
 hover-cursor-fill-alpha = 0.15
-hover-cursor-border = "#efb18b"
+hover-cursor-border = "#f2ba64"
 hover-cursor-border-alpha = 0.8
 focus-color = "#f2ba64"
 focus-border = "#f2ba64"
 focus-border-alpha = 1.0
 focus-fill-alpha = 0.16
-selected-color = "#efb18b"
+selected-color = "#f2ba64"
 selected-fill-alpha = 0.18
-selected-border = "#efb18b"
+selected-border = "#f2ba64"
 selected-border-width = 1
 selected-border-alpha = 0.7
 
@@ -31,42 +31,44 @@ selected-border-alpha = 0.7
 background = "#08090c"
 background-alpha = 1.0
 text = "#e9e3dc"
-border = "#b4a0df"
+border = "#a5ace1"
 border-width = 1
 
 [tooltip]
 background = "#181820"
 background-alpha = 1.0
 text = "#e9e3dc"
-border = "#b4a0df"
+border = "#a5ace1"
+# A 1px rounded border loses its outer bottom pixel, so that edge is thicker.
+border-width = "1 1 2"
 
 [notifications]
 background = "#08090c"
 background-alpha = 1.0
 text = "#e9e3dc"
-border = "#efb18b"
+border = "#f2ba64"
 border-width = "3 1 1"
-countdown = "#b4a0df"
+countdown = "#a5ace1"
 
 [launcher]
 background = "#08090c"
 background-alpha = 1.0
 text = "#e9e3dc"
-border = "#b4a0df"
+border = "#a5ace1"
 border-width = "4 1 1"
 scrim = "#08090c"
 scrim-alpha = 0.55
-selected-background = "#efb18b"
+selected-background = "#f2ba64"
 selected-background-alpha = 1.0
 selected-text = "#08090c"
-selected-border = "#efb18b"
+selected-border = "#f2ba64"
 selected-border-alpha = 1.0
 
 [menu]
 background = "#08090c"
 background-alpha = 1.0
 text = "#e9e3dc"
-border = "#efb18b"
+border = "#f2ba64"
 border-width = "4 1 1"
 scrim = "#08090c"
 scrim-alpha = 0.55
@@ -80,9 +82,9 @@ selected-border-alpha = 1.0
 background = "#08090c"
 background-alpha = 1.0
 text = "#e9e3dc"
-placeholder = "#b4a0df"
-border = "#b4a0df"
-border-active = "#efb18b"
+placeholder = "#a5ace1"
+border = "#a5ace1"
+border-active = "#f2ba64"
 border-error = "#ec8790"
-selection = "#efb18b"
+selection = "#f2ba64"
 selection-alpha = 0.35

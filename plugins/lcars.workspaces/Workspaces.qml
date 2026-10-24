@@ -81,10 +81,9 @@ BarWidget {
           bottomLeftRadius: topLeftRadius
           topRightRadius: segment.modelData === root.workspaceIds()[root.workspaceIds().length - 1] ? 12 : 2
           bottomRightRadius: topRightRadius
-          color: segment.focused ? "#f2ba64" : (segment.occupied ? "#b4a0df" : "#756986")
-          border.width: segment.tooltipHovered ? 1 : 0
-          // Same lavender as the clock capsule's hover border.
-          border.color: "#b4a0df"
+          color: segment.focused ? "#f2ba64" : (segment.occupied ? "#a5ace1" : "#756986")
+          border.width: (segment.tooltipHovered && !segment.focused) ? 1 : 0
+          border.color: "#f2ba64"
           Behavior on color { ColorAnimation { duration: 120 } }
         }
       }

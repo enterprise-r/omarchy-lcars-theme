@@ -6,10 +6,10 @@ BarWidget {
   id: root
   moduleName: "omarchy.menu"
   readonly property bool lcars: Color.background.toString() === "#08090c"
-  // LeftModules already insets the group by space(8). Pull the pill left so
-  // the screen-edge gap matches the gap before the next control.
+  // LeftModules insets the group by space(8). Cancel that so the pill meets
+  // the screen edge. sideGap stays between this pill and the next control.
   readonly property int sideGap: Style.space(3)
-  readonly property int leftPull: Style.space(8) - sideGap
+  readonly property int edgeInset: Style.space(8)
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -17,14 +17,14 @@ BarWidget {
   WidgetButton {
     id: button
     anchors.fill: parent
-    anchors.leftMargin: root.lcars ? -root.leftPull : 0
+    anchors.leftMargin: root.lcars ? -root.edgeInset : 0
     anchors.rightMargin: root.lcars ? root.sideGap : 0
     bar: root.bar
     text: "\ue900"
     fontFamily: "omarchy"
     fontSize: root.lcars ? 18 : Style.font.body
     foreground: root.lcars ? "#08090c" : (root.bar ? root.bar.barForeground : Color.foreground)
-    fixedWidth: root.lcars ? Style.space(32) - root.leftPull + root.sideGap : -1
+    fixedWidth: root.lcars ? Style.space(32) - root.edgeInset + root.sideGap * 2 : -1
     // The stock label centers on the full button, below this shorter pill.
     // The glyph also leans right in its em box.
     labelVisible: !root.lcars
@@ -37,7 +37,7 @@ BarWidget {
       anchors.top: parent.top
       height: parent.height - 2
       radius: 12
-      color: button.tooltipHovered ? "#98c5a3" : "#efb18b"
+      color: "#98c5a3"
     }
     Text {
       visible: root.lcars
