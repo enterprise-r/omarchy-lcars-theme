@@ -13,7 +13,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = ['menu', 'clock', 'workspaces', 'bluetooth', 'network', 'audio', 'monitor', 'power', 'weather', 'keyboard-layout', 'system-update', 'indicators']
-THEME_FILES = ['colors.toml', 'shell.toml', 'hyprland.lua', 'alacritty.toml', 'ghostty.conf', 'kitty.conf', 'foot.ini']
+THEME_FILES = ['colors.toml', 'shell.toml', 'hyprland.lua', 'alacritty.toml', 'ghostty.conf', 'kitty.conf', 'foot.ini', 'icons.theme']
 
 def write_json(path, data):
     # A symlink to a regular file is a versioned dotfile. Replace that file so
