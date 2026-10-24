@@ -649,7 +649,7 @@ Panel {
   }
 
   BarIconButton {
-    foreground: Color.background.toString() === "#08090c" ? "#b4a0df" : (root.bar ? root.bar.barForeground : Color.foreground)
+    foreground: Color.background.toString() === "#08090c" ? "#a5ace1" : (root.bar ? root.bar.barForeground : Color.foreground)
     id: button
     anchors.fill: parent
     bar: root.bar
