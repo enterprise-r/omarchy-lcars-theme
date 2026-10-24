@@ -46,8 +46,8 @@ Flags can be combined on the first install. To change installation options,
 uninstall and install again. The installer deliberately refuses to overwrite
 an existing managed installation or another plugin using its `lcars.*` names.
 
-Focused windows use 97% opacity; inactive windows use 94%. Terminal backgrounds
-use 88% alpha while retaining legible glyphs. The Foot theme hook updates
+Focused windows are fully opaque; inactive windows use 94%. Terminal backgrounds
+use 75% alpha while retaining legible glyphs. The Foot theme hook updates
 already-open terminals without closing their sessions. No blur is required.
 
 You can also install this repository through Omarchy's ordinary theme picker

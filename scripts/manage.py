@@ -140,8 +140,8 @@ def install(home, source=ROOT, theme_only=False, animation=True, transparency=Tr
         shutil.copytree(source / 'backgrounds', theme_stage / 'backgrounds')
         if not transparency:
             p = theme_stage / 'hyprland.lua'
-            p.write_text(p.read_text().replace('active_opacity = 0.97', 'active_opacity = 1.0').replace('inactive_opacity = 0.94', 'inactive_opacity = 1.0'))
-            for name, old, new in [('alacritty.toml', 'opacity = 0.88', 'opacity = 1.0'), ('ghostty.conf', 'background-opacity = 0.88', 'background-opacity = 1.0'), ('kitty.conf', 'background_opacity 0.88', 'background_opacity 1.0'), ('foot.ini', 'alpha=0.88', 'alpha=1.0')]:
+            p.write_text(p.read_text().replace('inactive_opacity = 0.94', 'inactive_opacity = 1.0').replace('opacity = "1 0.94"', 'opacity = "1 1"'))
+            for name, old, new in [('alacritty.toml', 'opacity = 0.75', 'opacity = 1.0'), ('ghostty.conf', 'background-opacity = 0.75', 'background-opacity = 1.0'), ('kitty.conf', 'background_opacity 0.75', 'background_opacity 1.0'), ('foot.ini', 'alpha=0.75', 'alpha=1.0')]:
                 p = theme_stage / name
                 p.write_text(p.read_text().replace(old, new))
         targets = [(theme_stage, config / 'themes/lcars')]

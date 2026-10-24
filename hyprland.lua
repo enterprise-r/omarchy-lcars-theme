@@ -1,4 +1,7 @@
 -- LCARS geometry stays with this theme; switching themes restores defaults.
+-- The stock window rule paints active windows at 98.5%. Match this theme instead.
+o.window({ tag = "default-opacity" }, { opacity = "1 0.94" })
+
 hl.config({
   general = {
     gaps_in = 4,
@@ -11,7 +14,7 @@ hl.config({
   },
   decoration = {
     rounding = 10,
-    active_opacity = 0.97,
+    active_opacity = 1.0,
     inactive_opacity = 0.94,
     shadow = { enabled = false },
     blur = { enabled = false },
