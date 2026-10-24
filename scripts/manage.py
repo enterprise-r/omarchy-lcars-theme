@@ -16,10 +16,17 @@ SOURCES = ['menu', 'clock', 'workspaces', 'bluetooth', 'network', 'audio', 'moni
 THEME_FILES = ['colors.toml', 'shell.toml', 'hyprland.lua', 'alacritty.toml', 'ghostty.conf', 'kitty.conf', 'foot.ini']
 
 def write_json(path, data):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temp = path.with_name(path.name + '.lcars-tmp')
+    # A symlink to a regular file is a versioned dotfile. Replace that file so
+    # the link stays. os.replace on the link itself would remove the link.
+    dest = path
+    if path.is_symlink():
+        dest = Path(os.path.realpath(path))
+        if not dest.is_file():
+            raise RuntimeError('Refusing to write through symlink: ' + str(path))
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    temp = dest.with_name(dest.name + '.lcars-tmp')
     temp.write_text(json.dumps(data, indent=2) + '\n')
-    temp.replace(path)
+    temp.replace(dest)
 
 def digest(path):
     if not path.exists():
@@ -156,7 +163,7 @@ def install(home, source=ROOT, theme_only=False, animation=True, transparency=Tr
             digest(target)  # Fail before mutation if a nested managed symlink is present.
             if '/plugins/' in str(target) and target.exists():
                 raise RuntimeError('Plugin already exists; refusing to overwrite: ' + str(target))
-        if shell_file.is_symlink():
+        if not theme_only and shell_file.is_symlink() and not Path(os.path.realpath(shell_file)).is_file():
             raise RuntimeError('Refusing to replace a symlinked shell.json.')
         backup.mkdir(parents=True)
         record = {'version': 1, 'previous_theme': previous_theme, 'before_shell': before, 'replaced': replaced, 'theme_only': theme_only, 'backup': str(backup), 'targets': []}

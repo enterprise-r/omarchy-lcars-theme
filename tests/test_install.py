@@ -121,5 +121,19 @@ class Installation(unittest.TestCase):
         p.symlink_to(target, target_is_directory=True)
         with self.assertRaises(RuntimeError): self.install()
         self.assertTrue(p.is_symlink())
+    def test_symlinked_shell_json_is_written_through(self):
+        versioned = Path(self.tmp.name)/'dotfiles'/'config'/'omarchy'/'shell.json'
+        versioned.parent.mkdir(parents=True)
+        versioned.write_bytes(self.shell.read_bytes())
+        self.shell.unlink()
+        self.shell.symlink_to(versioned)
+        link = self.shell.readlink()
+        self.install()
+        self.assertEqual(self.shell.readlink(), link)
+        self.assertEqual(json.loads(versioned.read_text())['bar']['layout']['center'][0]['id'], 'lcars.clock')
+        self.assertFalse((versioned.parent/'shell.json.lcars-tmp').exists())
+        m.uninstall(self.home, apply=False)
+        self.assertEqual(self.shell.readlink(), link)
+        self.assertEqual(json.loads(versioned.read_text()), BASE)
 
 if __name__ == '__main__': unittest.main()
