@@ -37,6 +37,9 @@ class Installation(unittest.TestCase):
         self.install()
         d = json.loads(self.shell.read_text())
         self.assertEqual(d['bar']['layout']['center'][0]['format'], 'HH:mm')
+        ids = [x['id'] for x in d['bar']['layout']['right']]
+        self.assertIn('lcars.plate', ids)
+        self.assertNotIn('lcars.band', ids)
         self.assertEqual(d['idle'], BASE['idle'])
         self.assertEqual(d['plugins'], BASE['plugins'])
         self.assertEqual(d['bar']['layout']['center'][0]['timezone'], 'Europe/Zurich')
@@ -48,6 +51,7 @@ class Installation(unittest.TestCase):
         d = json.loads(self.shell.read_text())
         self.assertEqual(d['idle']['lock'], 900)
         self.assertEqual(d['bar']['layout']['right'][-1]['id'], 'new.widget')
+        self.assertNotIn('lcars.plate', [x['id'] for x in d['bar']['layout']['right']])
         self.assertEqual(d['bar']['layout']['center'][0]['id'], 'omarchy.clock')
         self.assertEqual(d['bar']['layout']['center'][0]['format'], 'HH:mm')
         self.assertEqual(d['bar']['layout']['center'][0]['timezone'], 'UTC')
@@ -83,6 +87,7 @@ class Installation(unittest.TestCase):
         self.install(animation=False, transparency=False)
         d = json.loads(self.shell.read_text())
         self.assertNotIn('lcars.stars', [x['id'] for x in d['bar']['layout']['left']])
+        self.assertIn('lcars.plate', [x['id'] for x in d['bar']['layout']['right']])
         p = self.home/'.config/omarchy/themes/lcars'
         self.assertIn('active_opacity = 1.0', (p/'hyprland.lua').read_text())
         self.assertIn('alpha=1.0', (p/'foot.ini').read_text())

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "lcars.plate",
+  "name": "LCARS Plate",
+  "version": "1.0.0",
+  "author": "Yoav",
+  "description": "Background plate under the right side of the bar",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Plate.qml"
+  },
+  "barWidget": {
+    "displayName": "LCARS Plate",
+    "category": "Layout",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

@@ -75,8 +75,7 @@ def patch_shell(original, animation=True):
     if animation:
         d['bar']['layout'].setdefault('left', []).append({'id': 'lcars.stars'})
     right = d['bar']['layout'].setdefault('right', [])
-    right.insert(0, {'id': 'lcars.band', 'size': 28, 'color': '#efb18b', 'end': 'left'})
-    right.append({'id': 'lcars.band', 'size': 15, 'color': '#efb18b', 'end': 'right'})
+    right.append({'id': 'lcars.plate'})
     # Menu actions still route to the native menu; the clone only styles its bar entry.
     return d, changed
 
@@ -86,7 +85,7 @@ def unpatch_shell(current, record):
         result = []
         for entry in entries:
             target = entry.get('id')
-            if target in ['lcars.stars', 'lcars.band']:
+            if target in ['lcars.stars', 'lcars.band', 'lcars.plate']:
                 continue
             if target in record['replaced']:
                 entry = copy.deepcopy(entry)
