@@ -29,22 +29,6 @@ BarWidget {
   implicitWidth: 0
   implicitHeight: barSize
 
-  // Tracks the pointer across the whole bar, then keeps the border for the
-  // plate's own rectangle. A handler here does not take clicks from the modules.
-  HoverHandler {
-    id: plateHover
-    parent: root.barSurface ? root.barSurface : root
-    blocking: false
-  }
-  function pointerInsidePlate() {
-    if (!plateHover.hovered || plateRect.width < 1 || plateHover.parent !== plateRect.parent)
-      return false
-    var p = plateHover.point.position
-    return p.x >= plateRect.x && p.x < plateRect.x + plateRect.width
-        && p.y >= plateRect.y && p.y < plateRect.y + plateRect.height
-  }
-  readonly property bool pointerOverPlate: pointerInsidePlate()
-
   function place() {
     var row = root.hostRow
     var surface = root.barSurface
@@ -121,7 +105,5 @@ BarWidget {
     visible: root.lcars && !root.vertical && width > 0
     radius: 12
     color: Color.background
-    border.width: root.pointerOverPlate ? 1 : 0
-    border.color: "#98c5a3"
   }
 }

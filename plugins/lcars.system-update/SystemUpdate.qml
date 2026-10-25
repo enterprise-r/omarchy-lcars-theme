@@ -60,7 +60,7 @@ BarWidget {
     text: "\uf021"
     slotSize: Style.bar.statusSlot
     fontSize: Style.font.caption
-    foreground: (root.lcars && tooltipHovered) ? "#98c5a3" : (bar ? bar.barForeground : Color.foreground)
+    foreground: bar ? bar.barForeground : Color.foreground
     tooltipText: "Pending Omarchy Updates"
     onPressed: root.runUpdate()
   }

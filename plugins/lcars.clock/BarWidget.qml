@@ -167,10 +167,8 @@ BarWidget {
       anchors.top: parent.top
       height: parent.height - 2
       radius: 12
-      // Workspace 05's chip. The border shows only under the pointer.
+      // Workspace 05's chip.
       color: "#756986"
-      border.width: button.tooltipHovered ? 1 : 0
-      border.color: "#98c5a3"
     }
     Column {
       visible: root.vertical

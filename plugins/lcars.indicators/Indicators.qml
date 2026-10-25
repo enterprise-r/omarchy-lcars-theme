@@ -469,14 +469,13 @@ BarWidget {
       onStatusChanged: if (status === Loader.Error) console.warn("Indicator loader error", indicatorSlot.indicatorId, source)
     }
 
-    // Inactive icons sit at 45% opacity, so a green hover reads as pale.
-    // The hover comes up to 0.75. An active icon is the same green at full strength.
+    // An active icon is green at full strength. Inactive icons sit at 45%.
     Binding {
       target: indicatorSource.item
       property: "foreground"
       when: indicatorSource.item !== null
-      value: (root.lcars && indicatorSource.item && (indicatorSource.item.tooltipHovered || indicatorSource.item.effectiveActive))
-        ? "#98c5a3"
+      value: (root.lcars && indicatorSource.item && indicatorSource.item.effectiveActive)
+        ? "#8aa991"
         : (root.bar ? root.bar.barForeground : Color.foreground)
     }
 
@@ -488,7 +487,6 @@ BarWidget {
         var item = indicatorSource.item
         if (!item || item.belongsInBlock !== true) return 0
         if (item.effectiveActive) return 1
-        if (item.tooltipHovered) return 0.75
         return item.inactiveRevealed === true ? 0.45 : 0
       }
     }

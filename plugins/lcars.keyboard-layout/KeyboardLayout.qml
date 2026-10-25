@@ -213,7 +213,7 @@ BarWidget {
     text: root.layoutLabel
     fontSize: Style.font.caption
     horizontalMargin: 6
-    foreground: (root.lcars && tooltipHovered) ? "#98c5a3" : (bar ? bar.barForeground : Color.foreground)
+    foreground: bar ? bar.barForeground : Color.foreground
     tooltipText: root.layoutFull
     onPressed: function() { root.cycleLayout() }
   }

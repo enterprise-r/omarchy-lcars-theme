@@ -72,7 +72,7 @@ BarWidget {
     bar: root.bar
     text: panelLoader.item ? panelLoader.item.label : ""
     slotSize: Style.bar.statusSlot
-    foreground: (root.lcars && tooltipHovered) ? "#98c5a3" : (bar ? bar.barForeground : Color.foreground)
+    foreground: bar ? bar.barForeground : Color.foreground
     // Tooltip suppressed because the panel is the detail view.
     tooltipText: ""
 
