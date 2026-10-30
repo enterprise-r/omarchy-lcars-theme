@@ -13,7 +13,7 @@ import "Model.js" as Model
 BarWidget {
   id: root
   moduleName: "omarchy.clock"
-  readonly property bool lcars: Color.background.toString() === "#08090c"
+  readonly property bool lcars: Color.background.toString() === "#0e0012"
 
   property date displayDate: clock.date
 
@@ -145,7 +145,7 @@ BarWidget {
     anchors.fill: parent
     bar: root.bar
     text: root.vertical ? "" : (root.lcars ? root.displayText.toUpperCase() : root.displayText)
-    foreground: root.lcars ? "#08090c" : (root.bar ? root.bar.barForeground : Color.foreground)
+    foreground: root.lcars ? "#0e0012" : (root.bar ? root.bar.barForeground : Color.foreground)
     labelVisible: !root.vertical
     hasVisualContent: root.vertical ? root.verticalLines.length > 0 : text !== ""
     fixedHeight: root.vertical ? root.verticalLines.length * Style.bar.iconSlot : -1

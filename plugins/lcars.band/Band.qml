@@ -5,7 +5,7 @@ import qs.Ui
 // Structural LCARS endcap; no click target or simulated telemetry.
 BarWidget {
   id: root
-  readonly property bool lcars: Color.background.toString() === "#08090c"
+  readonly property bool lcars: Color.background.toString() === "#0e0012"
   implicitWidth: lcars ? Style.space(Number(setting("size", 38))) : 0
   implicitHeight: barSize
   Rectangle {
@@ -17,6 +17,6 @@ BarWidget {
     bottomLeftRadius: topLeftRadius
     topRightRadius: root.setting("end", "left") === "right" ? height / 2 : 1
     bottomRightRadius: topRightRadius
-    color: root.setting("color", "#f2ba64")
+    color: root.setting("color", "#f0a202")
   }
 }

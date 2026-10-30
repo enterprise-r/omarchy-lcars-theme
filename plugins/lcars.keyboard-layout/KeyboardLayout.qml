@@ -9,7 +9,7 @@ import "KeyboardLayoutModel.js" as KeyboardLayoutModel
 BarWidget {
   id: root
   moduleName: "omarchy.keyboard-layout"
-  readonly property bool lcars: Color.background.toString() === "#08090c"
+  readonly property bool lcars: Color.background.toString() === "#0e0012"
 
 
   property string layoutFull: ""

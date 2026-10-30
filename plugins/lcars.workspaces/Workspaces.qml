@@ -7,7 +7,7 @@ import qs.Ui
 BarWidget {
   id: root
   moduleName: "omarchy.workspaces"
-  readonly property bool lcars: Color.background.toString() === "#08090c"
+  readonly property bool lcars: Color.background.toString() === "#0e0012"
 
   function workspaceById(id) {
     var values = Hyprland.workspaces.values
@@ -62,7 +62,7 @@ BarWidget {
 
         bar: root.bar
         text: root.lcars ? String(modelData).padStart(2, "0") : (focused ? "\uDB85\uDCFB" : (modelData === 10 ? "0" : String(modelData)))
-        foreground: root.lcars ? "#08090c" : (root.bar ? root.bar.barForeground : Color.foreground)
+        foreground: root.lcars ? "#0e0012" : (root.bar ? root.bar.barForeground : Color.foreground)
         tooltipText: "Workspace " + modelData + (occupied ? " · " + workspace.toplevels.values.length + " windows" : " · empty")
         opacity: root.lcars ? 1 : (occupied || focused ? 1 : 0.5)
         horizontalMargin: 6
@@ -81,9 +81,9 @@ BarWidget {
           bottomLeftRadius: topLeftRadius
           topRightRadius: segment.modelData === root.workspaceIds()[root.workspaceIds().length - 1] ? 12 : 2
           bottomRightRadius: topRightRadius
-          color: segment.focused ? "#f2ba64" : (segment.occupied ? "#a5ace1" : "#756986")
+          color: segment.focused ? "#f0a202" : (segment.occupied ? "#a5ace1" : "#756986")
           border.width: (segment.tooltipHovered && !segment.focused) ? 1 : 0
-          border.color: "#f2ba64"
+          border.color: "#f0a202"
           Behavior on color { ColorAnimation { duration: 120 } }
         }
       }

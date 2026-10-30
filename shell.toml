@@ -1,8 +1,8 @@
 [bar]
-background = "#08090c"
+background = "#0e0012"
 background-alpha = 1.0
-text = "#c4b7db"
-active = "#f2ba64"
+text = "#c8cdd2"
+active = "#f0a202"
 scale-with-font = true
 size-horizontal = 32
 size-vertical = 32
@@ -13,78 +13,78 @@ normal-fill-alpha = 0.06
 normal-border = "#a5ace1"
 normal-border-alpha = 0.28
 normal-border-width = 1
-hover-cursor-color = "#f2ba64"
+hover-cursor-color = "#f0a202"
 hover-cursor-fill-alpha = 0.15
-hover-cursor-border = "#f2ba64"
+hover-cursor-border = "#f0a202"
 hover-cursor-border-alpha = 0.8
-focus-color = "#f2ba64"
-focus-border = "#f2ba64"
+focus-color = "#f0a202"
+focus-border = "#f0a202"
 focus-border-alpha = 1.0
 focus-fill-alpha = 0.16
-selected-color = "#f2ba64"
+selected-color = "#f0a202"
 selected-fill-alpha = 0.18
-selected-border = "#f2ba64"
+selected-border = "#f0a202"
 selected-border-width = 1
 selected-border-alpha = 0.7
 
 [popups]
-background = "#08090c"
+background = "#0e0012"
 background-alpha = 1.0
-text = "#e9e3dc"
+text = "#c8cdd2"
 border = "#a5ace1"
 border-width = 1
 
 [tooltip]
 background = "#181820"
 background-alpha = 1.0
-text = "#e9e3dc"
+text = "#c8cdd2"
 border = "#a5ace1"
 # A 1px rounded border loses its outer bottom pixel, so that edge is thicker.
 border-width = "1 1 2"
 
 [notifications]
-background = "#08090c"
+background = "#0e0012"
 background-alpha = 1.0
-text = "#e9e3dc"
-border = "#f2ba64"
+text = "#c8cdd2"
+border = "#f0a202"
 border-width = "3 1 1"
 countdown = "#a5ace1"
 
 [launcher]
-background = "#08090c"
+background = "#0e0012"
 background-alpha = 1.0
-text = "#e9e3dc"
+text = "#c8cdd2"
 border = "#a5ace1"
 border-width = "4 1 1"
-scrim = "#08090c"
+scrim = "#0e0012"
 scrim-alpha = 0.55
-selected-background = "#f2ba64"
+selected-background = "#f0a202"
 selected-background-alpha = 1.0
-selected-text = "#08090c"
-selected-border = "#f2ba64"
+selected-text = "#0e0012"
+selected-border = "#f0a202"
 selected-border-alpha = 1.0
 
 [menu]
-background = "#08090c"
+background = "#0e0012"
 background-alpha = 1.0
-text = "#e9e3dc"
-border = "#f2ba64"
+text = "#c8cdd2"
+border = "#f0a202"
 border-width = "4 1 1"
-scrim = "#08090c"
+scrim = "#0e0012"
 scrim-alpha = 0.55
 selected-background = "#8aa991"
 selected-background-alpha = 1.0
-selected-text = "#08090c"
+selected-text = "#0e0012"
 selected-border = "#8aa991"
 selected-border-alpha = 1.0
 
 [lock]
-background = "#08090c"
+background = "#0e0012"
 background-alpha = 1.0
-text = "#e9e3dc"
+text = "#c8cdd2"
 placeholder = "#a5ace1"
 border = "#a5ace1"
-border-active = "#f2ba64"
+border-active = "#f0a202"
 border-error = "#ec8790"
-selection = "#f2ba64"
+selection = "#f0a202"
 selection-alpha = 0.35
