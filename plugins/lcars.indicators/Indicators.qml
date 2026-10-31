@@ -7,7 +7,7 @@ import qs.Ui
 BarWidget {
   id: root
   moduleName: "omarchy.indicators"
-  readonly property bool lcars: Color.background.toString() === "#0e0012"
+  readonly property bool lcars: Color.background.toString() === "#0c040f"
 
   readonly property var defaultIndicatorEntries: [ "Dictation", "ScreenRecording", "Reminder", "NightLight", "Dnd", "StayAwake" ]
   readonly property var indicatorEntries: indicatorEntriesFromSettings(settings)
@@ -475,7 +475,7 @@ BarWidget {
       property: "foreground"
       when: indicatorSource.item !== null
       value: (root.lcars && indicatorSource.item && indicatorSource.item.effectiveActive)
-        ? "#8aa991"
+        ? "#77af8a"
         : (root.bar ? root.bar.barForeground : Color.foreground)
     }
 

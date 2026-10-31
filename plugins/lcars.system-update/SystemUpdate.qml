@@ -7,7 +7,7 @@ import qs.Ui
 BarWidget {
   id: root
   moduleName: "omarchy.system-update"
-  readonly property bool lcars: Color.background.toString() === "#0e0012"
+  readonly property bool lcars: Color.background.toString() === "#0c040f"
 
   property bool updateAvailable: false
 

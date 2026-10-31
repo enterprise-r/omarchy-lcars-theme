@@ -8,7 +8,7 @@ import qs.Ui
 // once its width has already settled.
 BarWidget {
   id: root
-  readonly property bool lcars: Color.background.toString() === "#0e0012"
+  readonly property bool lcars: Color.background.toString() === "#0c040f"
   // A transparent bar samples the wallpaper and, on a bright field, switches
   // its ink to the near-black contrast color. This plate is opaque and would
   // otherwise be that same black under the dark ink. Match the ink: bright
@@ -16,7 +16,7 @@ BarWidget {
   // sample in a color property; a var copy does not expose hslLightness.
   readonly property color ink: bar ? bar.barForeground : "#00000000"
   readonly property bool darkInk: bar && bar.transparent === true && ink.a > 0.5 && ink.hslLightness < 0.45
-  readonly property color plateColor: darkInk ? "#c8cdd2" : Color.background
+  readonly property color plateColor: darkInk ? "#d5dce3" : Color.background
   readonly property var hostWindow: root.QsWindow.window
   // Loader, then the module slot, then the row for this section.
   readonly property Item hostRow: {

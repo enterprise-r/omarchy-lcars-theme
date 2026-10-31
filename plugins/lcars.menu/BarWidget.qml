@@ -5,7 +5,7 @@ import qs.Commons
 BarWidget {
   id: root
   moduleName: "omarchy.menu"
-  readonly property bool lcars: Color.background.toString() === "#0e0012"
+  readonly property bool lcars: Color.background.toString() === "#0c040f"
   // LeftModules insets the group by space(8). Cancel that so the pill meets
   // the screen edge. sideGap stays between this pill and the next control.
   readonly property int sideGap: Style.space(3)
@@ -23,7 +23,7 @@ BarWidget {
     text: "\ue900"
     fontFamily: "omarchy"
     fontSize: root.lcars ? 18 : Style.font.body
-    foreground: root.lcars ? "#0e0012" : (root.bar ? root.bar.barForeground : Color.foreground)
+    foreground: root.lcars ? "#0c040f" : (root.bar ? root.bar.barForeground : Color.foreground)
     fixedWidth: root.lcars ? Style.space(32) - root.edgeInset + root.sideGap * 2 : -1
     // The stock label centers on the full button, below this shorter pill.
     // The glyph also leans right in its em box.
@@ -37,7 +37,7 @@ BarWidget {
       anchors.top: parent.top
       height: parent.height - 2
       radius: 12
-      color: "#8aa991"
+      color: "#77af8a"
     }
     Text {
       visible: root.lcars

@@ -9,7 +9,7 @@ hl.config({
     border_size = 1,
     col = {
       active_border = "rgba(a5ace1ff)",
-      inactive_border = "rgba(393344ff)",
+      inactive_border = "rgba(3f2c53ff)",
     },
   },
   decoration = {
@@ -22,7 +22,7 @@ hl.config({
   group = {
     col = {
       border_active = "rgba(a5ace1ff)",
-      border_inactive = "rgba(393344ff)",
+      border_inactive = "rgba(3f2c53ff)",
     },
   },
 })
