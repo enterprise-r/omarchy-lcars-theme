@@ -2,6 +2,7 @@ import copy
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -216,6 +217,53 @@ class Installation(unittest.TestCase):
         m.write_json(self.shell, d)
         with self.assertRaises(RuntimeError): self.install()
         self.assertEqual(json.loads(self.shell.read_text()), d)
+    def test_reinstall_keeps_wallpaper_symlink(self):
+        source = self.source_copy()
+        self.install(source=source)
+        wallpapers = Path(self.tmp.name)/'wallpapers'
+        wallpapers.mkdir()
+        marker = wallpapers/'keep.png'
+        marker.write_bytes(b'wallpaper')
+        theme = self.home/'.config/omarchy/themes/lcars'
+        backgrounds = theme/'backgrounds'
+        shutil.rmtree(backgrounds)
+        backgrounds.symlink_to(wallpapers)
+        self.install(source=source, reinstall=True)
+        self.assertTrue(backgrounds.is_symlink())
+        self.assertEqual(os.readlink(backgrounds), str(wallpapers))
+        self.assertEqual(marker.read_bytes(), b'wallpaper')
+        self.assertTrue((theme/'colors.toml').is_file())
+    def test_reinstall_skips_plugins_removed_from_source(self):
+        source = self.source_copy()
+        self.install(source=source)
+        record_path = self.home/'.local/state/omarchy-lcars/install.json'
+        record = json.loads(record_path.read_text())
+        ghost = self.home/'.config/omarchy/plugins/lcars.audio'
+        record['targets'].append({'path': str(ghost), 'saved': None, 'digest': 'gone'})
+        record_path.write_text(json.dumps(record))
+        self.install(source=source, reinstall=True)
+        self.assertFalse(ghost.exists())
+        saved = json.loads(record_path.read_text())
+        self.assertFalse(any(entry['path'].endswith('lcars.audio') for entry in saved['targets']))
+    def test_install_does_not_follow_wallpaper_symlink(self):
+        wallpapers = Path(self.tmp.name)/'wallpapers'
+        wallpapers.mkdir()
+        marker = wallpapers/'keep.png'
+        marker.write_bytes(b'wallpaper')
+        theme = self.home/'.config/omarchy/themes/lcars'
+        theme.mkdir(parents=True)
+        (theme/'backgrounds').symlink_to(wallpapers)
+        (theme/'colors.toml').write_text('old\n')
+        self.install()
+        self.assertEqual(marker.read_bytes(), b'wallpaper')
+        self.assertFalse((theme/'backgrounds').is_symlink())
+        record = json.loads((self.home/'.local/state/omarchy-lcars/install.json').read_text())
+        saved = Path(next(entry['saved'] for entry in record['targets'] if entry['path'].endswith('/themes/lcars')))
+        self.assertTrue((saved/'backgrounds').is_symlink())
+        self.assertEqual(os.readlink(saved/'backgrounds'), str(wallpapers))
+        m.uninstall(self.home, apply=False)
+        self.assertTrue((theme/'backgrounds').is_symlink())
+        self.assertEqual(marker.read_bytes(), b'wallpaper')
     def test_symlink_target_rejected(self):
         target = Path(self.tmp.name)/'important';target.mkdir()
         p = self.home/'.config/omarchy/themes/lcars';p.parent.mkdir(parents=True)

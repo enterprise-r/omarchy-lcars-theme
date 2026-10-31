@@ -29,30 +29,103 @@ def write_json(path, data):
     temp.replace(dest)
 
 def digest(path):
+    # Hash a symlink as a link. Never follow it: a wallpaper folder is often
+    # linked from the theme, and reading through it would hash the user's pictures.
+    if path.is_symlink():
+        h = hashlib.sha256()
+        h.update(b'link:')
+        h.update(os.readlink(path).encode())
+        return h.hexdigest()
     if not path.exists():
         return None
     h = hashlib.sha256()
-    files = sorted(path.rglob('*')) if path.is_dir() else [path]
+    files = [path] if path.is_file() else sorted(p for p in path.rglob('*') if p.is_symlink() or p.is_file())
     for file in files:
+        rel = file.name if path.is_file() else str(file.relative_to(path))
+        h.update(rel.encode())
         if file.is_symlink():
-            raise RuntimeError('Refusing symlink in managed path: ' + str(file))
-        if file.is_file():
-            h.update(str(file.relative_to(path) if path.is_dir() else file.name).encode())
+            h.update(b'link:')
+            h.update(os.readlink(file).encode())
+        else:
             h.update(file.read_bytes())
     return h.hexdigest()
 
+def regular_files_equal(installed, incoming):
+    """True when every regular file in installed has the same bytes in incoming.
+
+    Symlinks are ignored and not followed. A file that exists only in installed
+    is a local addition. Files that exist only in incoming are updates.
+    """
+    def files(root):
+        if root.is_symlink() or not root.exists():
+            return {}
+        found = {}
+        paths = [root] if root.is_file() else [p for p in root.rglob('*') if p.is_file() and not p.is_symlink()]
+        for file in paths:
+            rel = '.' if root.is_file() else str(file.relative_to(root))
+            found[rel] = file.read_bytes()
+        return found
+    inst = files(installed)
+    inc = files(incoming)
+    if set(inst) - set(inc):
+        return False
+    return all(inc[rel] == data for rel, data in inst.items())
+
 def copy_path(src, dest):
     dest.parent.mkdir(parents=True, exist_ok=True)
-    if src.is_dir():
-        shutil.copytree(src, dest)
+    if src.is_symlink():
+        dest.symlink_to(os.readlink(src))
+    elif src.is_dir():
+        shutil.copytree(src, dest, symlinks=True)
     else:
         shutil.copy2(src, dest)
 
 def remove(path):
-    if path.is_dir():
+    # is_dir() follows links. Unlink a symlink itself and leave its target.
+    if path.is_symlink():
+        path.unlink()
+    elif path.is_dir():
         shutil.rmtree(path)
     elif path.exists():
         path.unlink()
+
+def restore_symlinks(snapshot, dest):
+    if snapshot.is_symlink() or not snapshot.is_dir():
+        return
+    for link in sorted(p for p in snapshot.rglob('*') if p.is_symlink()):
+        target = dest / link.relative_to(snapshot)
+        if target.exists() or target.is_symlink():
+            remove(target)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.symlink_to(os.readlink(link))
+
+def locally_edited(target, recorded, incoming=None):
+    """A hand edit blocks reinstall and uninstall. A nested symlink does not.
+
+    Reinstall may still refresh regular files that match the incoming tree.
+    The link itself is preserved and is never followed.
+    """
+    if target.is_symlink() or not target.exists():
+        return False
+    if digest(target) == recorded:
+        return False
+    if incoming is not None and regular_files_equal(target, incoming):
+        return False
+    if incoming is None and target.is_dir() and any(p.is_symlink() for p in target.rglob('*')):
+        return False
+    return True
+
+def theme_uses_transparency(config):
+    foot = config / 'themes/lcars/foot.ini'
+    if not foot.is_file() or foot.is_symlink():
+        return True
+    for line in foot.read_text().splitlines():
+        if line.startswith('alpha='):
+            try:
+                return float(line.split('=', 1)[1].strip()) < 1
+            except ValueError:
+                return True
+    return True
 
 def patch_shell(original):
     d = copy.deepcopy(original)
@@ -156,7 +229,7 @@ def managed_source(target, theme_stage, source, stage):
     if '/plugins/' in str(target):
         plugin = source / 'plugins' / target.name
         if not plugin.exists():
-            raise RuntimeError('No source for managed path: ' + str(target))
+            return None
         return plugin
     staged = stage / target.name
     if target.name in ['lcars-foot-opacity.py', 'lcars-foot-opacity.sh', 'lcars-vscode-terminal.py', 'lcars-vscode-terminal.sh'] and staged.exists():
@@ -202,7 +275,7 @@ def install(home, source=ROOT, theme_only=False, transparency=True, apply=True, 
         for _, target in targets:
             if target.is_symlink():
                 raise RuntimeError('Refusing to replace symlink: ' + str(target))
-            digest(target)  # Fail before mutation if a nested managed symlink is present.
+            digest(target)  # Read the tree before mutation. Nested symlinks are hashed, not followed.
             if '/plugins/' in str(target) and target.exists():
                 raise RuntimeError('Plugin already exists; refusing to overwrite: ' + str(target))
         if not theme_only and shell_file.is_symlink() and not Path(os.path.realpath(shell_file)).is_file():
@@ -256,15 +329,8 @@ def refresh(home, source, apply):
     if record.get('version') != 1 or not isinstance(record.get('targets'), list):
         raise RuntimeError('Unsupported LCARS install record.')
     theme_only = bool(record.get('theme_only'))
-    transparency = any(Path(entry['path']).name == 'lcars-foot-opacity.py' for entry in record['targets'])
-    checked = []
-    for entry in record['targets']:
-        target = Path(entry['path'])
-        if target.is_symlink():
-            raise RuntimeError('Refusing to replace symlink: ' + str(target))
-        if target.exists() and digest(target) != entry.get('digest'):
-            raise RuntimeError('A managed file has local edits. Back up and restore it before reinstalling: ' + str(target))
-        checked.append((entry, target))
+    config = paths(home)[0]
+    transparency = any(Path(entry['path']).name == 'lcars-foot-opacity.py' for entry in record['targets']) or theme_uses_transparency(config)
     stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')
     stage = state / ('stage-' + stamp)
     snapshot = state / ('reinstall-' + stamp)
@@ -273,7 +339,22 @@ def refresh(home, source, apply):
     replaced = []
     try:
         theme_stage = populate_stage(stage, source, transparency)
-        sources = [managed_source(target, theme_stage, source, stage) for _, target in checked]
+        checked = []
+        sources = []
+        for entry in record['targets']:
+            target = Path(entry['path'])
+            if target.is_symlink():
+                raise RuntimeError('Refusing to replace symlink: ' + str(target))
+            src = managed_source(target, theme_stage, source, stage)
+            if src is None:
+                if target.exists():
+                    raise RuntimeError('No source for managed path: ' + str(target))
+                continue
+            if locally_edited(target, entry.get('digest'), src):
+                raise RuntimeError('A managed file has local edits. Back up and restore it before reinstalling: ' + str(target))
+            checked.append((entry, target))
+            sources.append(src)
+        record['targets'] = [entry for entry, _ in checked]
         for index, ((entry, target), src) in enumerate(zip(checked, sources)):
             snap = snapshot / str(index)
             if target.exists():
@@ -281,6 +362,7 @@ def refresh(home, source, apply):
             remove(target)
             replaced.append(index)
             copy_path(src, target)
+            restore_symlinks(snap, target)
             entry['digest'] = digest(target)
         write_json(record_file, record)
         if apply:
@@ -312,7 +394,7 @@ def uninstall(home, apply=True):
     record = json.loads(record_file.read_text())
     for entry in record['targets']:
         target = Path(entry['path'])
-        if target.exists() and digest(target) != entry['digest']:
+        if locally_edited(target, entry.get('digest')):
             raise RuntimeError('A managed file has local edits. Back up and restore it before uninstalling: ' + str(target))
     shell_file = config / 'shell.json'
     current = json.loads(shell_file.read_text()) if shell_file.exists() else {}
