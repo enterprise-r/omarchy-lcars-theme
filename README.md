@@ -11,6 +11,8 @@ into icy-white trails as they approach the edges.
 
 ![Animated LCARS bar](assets/warp-bar.gif)
 
+![LCARS palette](assets/palette.png)
+
 ## Install the complete experience
 
 Requires **Omarchy 4 / Quattro with the Quickshell shell**, a top or bottom bar,
@@ -98,7 +100,10 @@ support. This does not inject fictional title bars into editors or websites.
 
 ```bash
 python3 -m unittest discover -s tests -v
+python3 scripts/palette.py
 ```
+
+`scripts/palette.py` redraws `assets/palette.png` from `colors.toml`.
 
 The tests use temporary directories and never touch your real desktop. They
 cover install/uninstall, custom widget preservation, restore of an existing
