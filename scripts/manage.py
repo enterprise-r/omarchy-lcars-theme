@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install/uninstall LCARS without replacing unrelated shell configuration."""
+"""Install, reinstall, or uninstall LCARS without replacing unrelated shell configuration."""
 import argparse
 import copy
 import datetime
@@ -113,11 +113,61 @@ def check_hyprland():
 def paths(home):
     return home / '.config/omarchy', home / '.local/state/omarchy-lcars'
 
-def install(home, source=ROOT, theme_only=False, transparency=True, apply=True, omarchy_path=None):
+def populate_stage(stage, source, transparency):
+    theme_stage = stage / 'lcars'
+    theme_stage.mkdir()
+    for name in THEME_FILES:
+        shutil.copy2(source / name, theme_stage / name)
+    shutil.copytree(source / 'backgrounds', theme_stage / 'backgrounds')
+    if not transparency:
+        p = theme_stage / 'hyprland.lua'
+        p.write_text(p.read_text().replace('inactive_opacity = 0.94', 'inactive_opacity = 1.0').replace('opacity = "1 0.94"', 'opacity = "1 1"'))
+        for name, old, new in [('alacritty.toml', 'opacity = 0.85', 'opacity = 1.0'), ('ghostty.conf', 'background-opacity = 0.85', 'background-opacity = 1.0'), ('kitty.conf', 'background_opacity 0.85', 'background_opacity 1.0'), ('foot.ini', 'alpha=0.85', 'alpha=1.0')]:
+            p = theme_stage / name
+            p.write_text(p.read_text().replace(old, new))
+    else:
+        helper = stage / 'lcars-foot-opacity.py'
+        shutil.copy2(source / 'scripts/foot-opacity.py', helper)
+        helper.chmod(0o755)
+    vscode_helper = stage / 'lcars-vscode-terminal.py'
+    shutil.copy2(source / 'scripts/vscode-terminal-map.py', vscode_helper)
+    vscode_helper.chmod(0o755)
+    wrapper = stage / 'lcars-vscode-terminal.sh'
+    wrapper.write_text('#!/bin/bash\nexec python3 "$HOME/.config/omarchy/hooks/lcars-vscode-terminal.py"\n')
+    wrapper.chmod(0o755)
+    return theme_stage
+
+def apply_lcars(theme_only):
+    subprocess.run(['omarchy', 'theme', 'set', 'lcars'], check=True)
+    if not theme_only:
+        subprocess.run(['omarchy', 'restart', 'shell'], check=True)
+    subprocess.run(['hyprctl', 'reload'], check=True)
+    check_hyprland()
+
+def managed_source(target, theme_stage, source, stage):
+    if target.is_symlink():
+        raise RuntimeError('Refusing to replace symlink: ' + str(target))
+    if target.name == 'lcars' and target.parent.name == 'themes':
+        return theme_stage
+    if '/plugins/' in str(target):
+        plugin = source / 'plugins' / target.name
+        if not plugin.exists():
+            raise RuntimeError('No source for managed path: ' + str(target))
+        return plugin
+    staged = stage / target.name
+    if target.name in ['lcars-foot-opacity.py', 'lcars-vscode-terminal.py', 'lcars-vscode-terminal.sh'] and staged.exists():
+        return staged
+    raise RuntimeError('No source for managed path: ' + str(target))
+
+def install(home, source=ROOT, theme_only=False, transparency=True, apply=True, omarchy_path=None, reinstall=False):
     config, state = paths(home)
     record_file = state / 'install.json'
     if record_file.exists():
-        raise RuntimeError('LCARS is already installed by this installer. Uninstall before installing another version.')
+        if not reinstall:
+            raise RuntimeError('LCARS is already installed by this installer. Uninstall before installing another version, or reinstall with --reinstall.')
+        return refresh(home, source, apply)
+    if reinstall:
+        raise RuntimeError('No managed LCARS installation found.')
     omarchy_path = omarchy_path or Path(os.environ.get('OMARCHY_PATH', '/usr/share/omarchy'))
     if not theme_only and not (omarchy_path / 'shell/Ui/PluginBarApi.qml').exists():
         raise RuntimeError('The complete experience requires the Omarchy 4 Quickshell shell. Use --theme-only for the palette.')
@@ -134,35 +184,16 @@ def install(home, source=ROOT, theme_only=False, transparency=True, apply=True, 
     backup = state / 'backups' / stamp
     stage = state / ('stage-' + stamp)
     stage.mkdir(parents=True)
-    theme_stage = stage / 'lcars'
-    theme_stage.mkdir()
     try:
-        for name in THEME_FILES:
-            shutil.copy2(source / name, theme_stage / name)
-        shutil.copytree(source / 'backgrounds', theme_stage / 'backgrounds')
-        if not transparency:
-            p = theme_stage / 'hyprland.lua'
-            p.write_text(p.read_text().replace('inactive_opacity = 0.94', 'inactive_opacity = 1.0').replace('opacity = "1 0.94"', 'opacity = "1 1"'))
-            for name, old, new in [('alacritty.toml', 'opacity = 0.85', 'opacity = 1.0'), ('ghostty.conf', 'background-opacity = 0.85', 'background-opacity = 1.0'), ('kitty.conf', 'background_opacity 0.85', 'background_opacity 1.0'), ('foot.ini', 'alpha=0.85', 'alpha=1.0')]:
-                p = theme_stage / name
-                p.write_text(p.read_text().replace(old, new))
+        theme_stage = populate_stage(stage, source, transparency)
         targets = [(theme_stage, config / 'themes/lcars')]
         if not theme_only:
             for plugin in sorted((source / 'plugins').iterdir()):
                 targets.append((plugin, config / 'plugins' / plugin.name))
         if transparency:
-            helper = stage / 'lcars-foot-opacity.py'
-            shutil.copy2(source / 'scripts/foot-opacity.py', helper)
-            helper.chmod(0o755)
-            targets.append((helper, config / 'hooks/theme-set.d/lcars-foot-opacity.py'))
-        vscode_helper = stage / 'lcars-vscode-terminal.py'
-        shutil.copy2(source / 'scripts/vscode-terminal-map.py', vscode_helper)
-        vscode_helper.chmod(0o755)
-        targets.append((vscode_helper, config / 'hooks/lcars-vscode-terminal.py'))
-        wrapper = stage / 'lcars-vscode-terminal.sh'
-        wrapper.write_text('#!/bin/bash\nexec python3 "$HOME/.config/omarchy/hooks/lcars-vscode-terminal.py"\n')
-        wrapper.chmod(0o755)
-        targets.append((wrapper, config / 'hooks/theme-set.d/lcars-vscode-terminal.sh'))
+            targets.append((stage / 'lcars-foot-opacity.py', config / 'hooks/theme-set.d/lcars-foot-opacity.py'))
+        targets.append((stage / 'lcars-vscode-terminal.py', config / 'hooks/lcars-vscode-terminal.py'))
+        targets.append((stage / 'lcars-vscode-terminal.sh', config / 'hooks/theme-set.d/lcars-vscode-terminal.sh'))
         for _, target in targets:
             if target.is_symlink():
                 raise RuntimeError('Refusing to replace symlink: ' + str(target))
@@ -189,11 +220,7 @@ def install(home, source=ROOT, theme_only=False, transparency=True, apply=True, 
                 write_json(shell_file, after)
             write_json(record_file, record)
             if apply:
-                subprocess.run(['omarchy', 'theme', 'set', 'lcars'], check=True)
-                if not theme_only:
-                    subprocess.run(['omarchy', 'restart', 'shell'], check=True)
-                subprocess.run(['hyprctl', 'reload'], check=True)
-                check_hyprland()
+                apply_lcars(theme_only)
         except Exception:
             for entry in reversed(record['targets']):
                 target = Path(entry['path'])
@@ -209,6 +236,67 @@ def install(home, source=ROOT, theme_only=False, transparency=True, apply=True, 
             raise
     finally:
         shutil.rmtree(stage, ignore_errors=True)
+    return record
+
+def refresh(home, source, apply):
+    """Replace managed theme, plugin, and hook files from source, then apply LCARS.
+
+    Shell layout and the options recorded at first install stay as they are.
+    A managed file whose contents differ from the install record stops the refresh.
+    """
+    state = paths(home)[1]
+    record_file = state / 'install.json'
+    record_text = record_file.read_text()
+    record = json.loads(record_text)
+    if record.get('version') != 1 or not isinstance(record.get('targets'), list):
+        raise RuntimeError('Unsupported LCARS install record.')
+    theme_only = bool(record.get('theme_only'))
+    transparency = any(Path(entry['path']).name == 'lcars-foot-opacity.py' for entry in record['targets'])
+    checked = []
+    for entry in record['targets']:
+        target = Path(entry['path'])
+        if target.is_symlink():
+            raise RuntimeError('Refusing to replace symlink: ' + str(target))
+        if target.exists() and digest(target) != entry.get('digest'):
+            raise RuntimeError('A managed file has local edits. Back up and restore it before reinstalling: ' + str(target))
+        checked.append((entry, target))
+    stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')
+    stage = state / ('stage-' + stamp)
+    snapshot = state / ('reinstall-' + stamp)
+    stage.mkdir(parents=True)
+    snapshot.mkdir()
+    replaced = []
+    try:
+        theme_stage = populate_stage(stage, source, transparency)
+        sources = [managed_source(target, theme_stage, source, stage) for _, target in checked]
+        for index, ((entry, target), src) in enumerate(zip(checked, sources)):
+            snap = snapshot / str(index)
+            if target.exists():
+                copy_path(target, snap)
+            remove(target)
+            replaced.append(index)
+            copy_path(src, target)
+            entry['digest'] = digest(target)
+        write_json(record_file, record)
+        if apply:
+            apply_lcars(theme_only)
+    except Exception:
+        for index in reversed(replaced):
+            target = checked[index][1]
+            snap = snapshot / str(index)
+            remove(target)
+            if snap.exists():
+                copy_path(snap, target)
+        if replaced:
+            record_file.write_text(record_text)
+            if apply:
+                subprocess.run(['omarchy', 'theme', 'set', 'lcars'], check=False)
+                if not theme_only:
+                    subprocess.run(['omarchy', 'restart', 'shell'], check=False)
+        raise
+    finally:
+        shutil.rmtree(stage, ignore_errors=True)
+        shutil.rmtree(snapshot, ignore_errors=True)
     return record
 
 def uninstall(home, apply=True):
@@ -245,20 +333,28 @@ def uninstall(home, apply=True):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--uninstall', action='store_true')
+    p.add_argument('--reinstall', action='store_true', help='refresh managed files from this checkout and apply LCARS again')
     p.add_argument('--theme-only', action='store_true')
     p.add_argument('--no-transparency', action='store_true')
     p.add_argument('--no-apply', action='store_true', help='install files without reloading the live desktop')
     args = p.parse_args()
     if os.geteuid() == 0:
         p.error('Run as your desktop user, without sudo.')
+    if args.reinstall and args.uninstall:
+        p.error('--reinstall cannot be combined with --uninstall.')
+    if args.reinstall and (args.theme_only or args.no_transparency):
+        p.error('--reinstall keeps the original install options. Uninstall first to change them.')
     try:
         if args.uninstall:
             record = uninstall(Path.home(), apply=not args.no_apply)
             print('LCARS uninstalled. Backup retained:', record['backup'])
         else:
-            record = install(Path.home(), theme_only=args.theme_only, transparency=not args.no_transparency, apply=not args.no_apply)
-            print('LCARS installed. Backup:', record['backup'])
-            print('Existing custom widgets were preserved. Restart applications if they do not live-reload their theme.')
+            record = install(Path.home(), theme_only=args.theme_only, transparency=not args.no_transparency, apply=not args.no_apply, reinstall=args.reinstall)
+            if args.reinstall:
+                print('LCARS reinstalled. Restart applications if they do not live-reload their theme.')
+            else:
+                print('LCARS installed. Backup:', record['backup'])
+                print('Existing custom widgets were preserved. Restart applications if they do not live-reload their theme.')
     except (RuntimeError, OSError, ValueError, subprocess.CalledProcessError) as exc:
         print('LCARS:', exc, file=sys.stderr)
         return 1

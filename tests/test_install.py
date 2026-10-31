@@ -1,7 +1,11 @@
 import copy
 import importlib.util
+import io
 import json
 from pathlib import Path
+import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -33,6 +37,16 @@ class Installation(unittest.TestCase):
         marker.write_text('supported')
     def install(self, **kwargs):
         return m.install(self.home, apply=False, omarchy_path=self.platform, **kwargs)
+    def source_copy(self):
+        source = Path(self.tmp.name)/'src'
+        (source/'scripts').mkdir(parents=True)
+        for name in m.THEME_FILES:
+            shutil.copy2(ROOT/name, source/name)
+        shutil.copytree(ROOT/'backgrounds', source/'backgrounds')
+        shutil.copytree(ROOT/'plugins', source/'plugins')
+        for name in ['foot-opacity.py', 'vscode-terminal-map.py']:
+            shutil.copy2(ROOT/'scripts'/name, source/'scripts'/name)
+        return source
     def test_round_trip_preserves_unrelated_changes(self):
         self.install()
         d = json.loads(self.shell.read_text())
@@ -80,6 +94,75 @@ class Installation(unittest.TestCase):
         before = self.shell.read_bytes()
         with self.assertRaises(RuntimeError): self.install()
         self.assertEqual(before, self.shell.read_bytes())
+    def test_reinstall_refreshes_theme_without_touching_shell(self):
+        source = self.source_copy()
+        personal = self.home/'.config/omarchy/themes/lcars/mine.txt'
+        personal.parent.mkdir(parents=True)
+        personal.write_text('personal palette')
+        self.install(source=source)
+        shell = json.loads(self.shell.read_text())
+        shell['idle']['lock'] = 900
+        m.write_json(self.shell, shell)
+        yellow = 'yellow = "#abcdef"'
+        colors = source/'colors.toml'
+        colors.write_text(colors.read_text().replace('yellow = "#f2ba64"', yellow))
+        foot = source/'foot.ini'
+        foot.write_text(foot.read_text().replace('regular6=f2ba64', 'regular6=abcdef'))
+        record = self.install(source=source, reinstall=True)
+        installed = self.home/'.config/omarchy/themes/lcars'
+        self.assertIn(yellow, (installed/'colors.toml').read_text())
+        self.assertIn('regular6=abcdef', (installed/'foot.ini').read_text())
+        self.assertEqual(m.digest(installed), next(e['digest'] for e in record['targets'] if e['path'].endswith('/themes/lcars')))
+        restored = json.loads(self.shell.read_text())
+        self.assertEqual(restored['idle']['lock'], 900)
+        self.assertEqual([x['id'] for x in restored['bar']['layout']['right']].count('lcars.plate'), 1)
+        self.assertEqual([x['id'] for x in restored['bar']['layout']['left']].count('lcars.stars'), 1)
+        m.uninstall(self.home, apply=False)
+        self.assertEqual(personal.read_text(), 'personal palette')
+    def test_reinstall_keeps_opaque_install(self):
+        source = self.source_copy()
+        self.install(source=source, transparency=False)
+        self.install(source=source, reinstall=True)
+        theme = self.home/'.config/omarchy/themes/lcars'
+        self.assertIn('alpha=1.0', (theme/'foot.ini').read_text())
+        self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-foot-opacity.py').exists())
+    def test_reinstall_keeps_theme_only(self):
+        source = self.source_copy()
+        self.install(source=source, theme_only=True)
+        self.install(source=source, reinstall=True)
+        self.assertFalse((self.home/'.config/omarchy/plugins').exists())
+    def test_reinstall_refuses_local_edits(self):
+        source = self.source_copy()
+        self.install(source=source)
+        colors = self.home/'.config/omarchy/themes/lcars/colors.toml'
+        colors.write_text(colors.read_text()+'\n# my edit\n')
+        edited = colors.read_text()
+        shell = self.shell.read_bytes()
+        with self.assertRaises(RuntimeError): self.install(source=source, reinstall=True)
+        self.assertEqual(colors.read_text(), edited)
+        self.assertEqual(self.shell.read_bytes(), shell)
+    def test_reinstall_without_install_does_nothing(self):
+        with self.assertRaises(RuntimeError): self.install(reinstall=True)
+        self.assertFalse((self.home/'.local/state/omarchy-lcars/install.json').exists())
+        self.assertEqual(json.loads(self.shell.read_text()), BASE)
+    def test_reinstall_apply_failure_restores_files(self):
+        source = self.source_copy()
+        self.install(source=source)
+        colors = self.home/'.config/omarchy/themes/lcars/colors.toml'
+        before_colors = colors.read_text()
+        before_record = (self.home/'.local/state/omarchy-lcars/install.json').read_text()
+        (source/'colors.toml').write_text(before_colors.replace('yellow = "#f2ba64"', 'yellow = "#abcdef"'))
+        with patch.object(m.subprocess, 'run', side_effect=[subprocess.CalledProcessError(1, 'omarchy'), None, None]):
+            with self.assertRaises(subprocess.CalledProcessError):
+                m.install(self.home, source=source, apply=True, omarchy_path=self.platform, reinstall=True)
+        self.assertEqual(colors.read_text(), before_colors)
+        self.assertEqual((self.home/'.local/state/omarchy-lcars/install.json').read_text(), before_record)
+        self.assertFalse(any(self.home.joinpath('.local/state/omarchy-lcars').glob('reinstall-*')))
+        self.assertFalse(any(self.home.joinpath('.local/state/omarchy-lcars').glob('stage-*')))
+    def test_reinstall_flag_rejects_option_changes(self):
+        with patch.object(sys, 'argv', ['manage.py', '--reinstall', '--no-transparency']), patch('sys.stderr', io.StringIO()):
+            with self.assertRaises(SystemExit):
+                m.main()
     def test_conflicting_plugin_is_not_overwritten(self):
         p = self.home/'.config/omarchy/plugins/lcars.stars/mine.qml'
         p.parent.mkdir(parents=True)

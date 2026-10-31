@@ -39,11 +39,15 @@ The clock keeps the label already in your shell configuration.
 ```bash
 ./install.sh --no-transparency    # Keep windows and terminals opaque
 ./install.sh --theme-only         # Palette and wallpaper, without bar changes
+./install.sh --reinstall          # Refresh an existing install and apply it
 ```
 
-Flags can be combined on the first install. To change installation options,
-uninstall and install again. The installer deliberately refuses to overwrite
-an existing managed installation or another plugin using its `lcars.*` names.
+Flags can be combined on the first install. To change those options later,
+uninstall and install again. `./install.sh --reinstall` copies this checkout
+over the managed theme, plugins, and hooks, then applies LCARS again. Your
+shell layout and the original options stay in place. Reinstall stops if a
+managed file has local edits. The installer still refuses to overwrite another
+plugin that uses an `lcars.*` name.
 
 Focused windows are fully opaque; inactive windows use 94%. Terminal backgrounds
 use 75% alpha while retaining legible glyphs. The Foot theme hook updates
