@@ -30,14 +30,14 @@ selected-border-alpha = 0.7
 [popups]
 background = "#0c040f"
 background-alpha = 1.0
-text = "#dee5ec"
+text = "#e0e6e2"
 border = "#a5ace1"
 border-width = 1
 
 [tooltip]
 background = "#181820"
 background-alpha = 1.0
-text = "#dee5ec"
+text = "#e0e6e2"
 border = "#a5ace1"
 # A 1px rounded border loses its outer bottom pixel, so that edge is thicker.
 border-width = "1 1 2"
@@ -45,7 +45,7 @@ border-width = "1 1 2"
 [notifications]
 background = "#0c040f"
 background-alpha = 1.0
-text = "#dee5ec"
+text = "#e0e6e2"
 border = "#f4b965"
 border-width = "3 1 1"
 countdown = "#a5ace1"
@@ -53,7 +53,7 @@ countdown = "#a5ace1"
 [launcher]
 background = "#0c040f"
 background-alpha = 1.0
-text = "#dee5ec"
+text = "#e0e6e2"
 border = "#a5ace1"
 border-width = "4 1 1"
 scrim = "#0c040f"
@@ -67,7 +67,7 @@ selected-border-alpha = 1.0
 [menu]
 background = "#0c040f"
 background-alpha = 1.0
-text = "#dee5ec"
+text = "#e0e6e2"
 border = "#f4b965"
 border-width = "4 1 1"
 scrim = "#0c040f"
@@ -81,7 +81,7 @@ selected-border-alpha = 1.0
 [lock]
 background = "#0c040f"
 background-alpha = 1.0
-text = "#dee5ec"
+text = "#e0e6e2"
 placeholder = "#a5ace1"
 border = "#a5ace1"
 border-active = "#f4b965"

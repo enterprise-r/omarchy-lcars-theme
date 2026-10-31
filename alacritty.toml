@@ -1,6 +1,6 @@
 [colors.primary]
 background = "#0c040f"
-foreground = "#dee5ec"
+foreground = "#e0e6e2"
 
 [colors.cursor]
 text = "#0c040f"
@@ -20,7 +20,7 @@ background = "#ec8790"
 
 [colors.footer_bar]
 foreground = "#0c040f"
-background = "#dee5ec"
+background = "#e0e6e2"
 
 [colors.selection]
 text = "#fff3e6"
@@ -34,10 +34,10 @@ yellow = "#96c5cf"
 blue = "#77af8a"
 magenta = "#ba9eda"
 cyan = "#f4b965"
-white = "#dee5ec"
+white = "#e0e6e2"
 
 [colors.bright]
-black = "#7b6f8b"
+black = "#7d6d91"
 red = "#ffa5ad"
 green = "#bdcbd9"
 yellow = "#cad9e7"
