@@ -141,7 +141,7 @@ def install(home, source=ROOT, theme_only=False, animation=True, transparency=Tr
         if not transparency:
             p = theme_stage / 'hyprland.lua'
             p.write_text(p.read_text().replace('inactive_opacity = 0.94', 'inactive_opacity = 1.0').replace('opacity = "1 0.94"', 'opacity = "1 1"'))
-            for name, old, new in [('alacritty.toml', 'opacity = 0.75', 'opacity = 1.0'), ('ghostty.conf', 'background-opacity = 0.75', 'background-opacity = 1.0'), ('kitty.conf', 'background_opacity 0.75', 'background_opacity 1.0'), ('foot.ini', 'alpha=0.75', 'alpha=1.0')]:
+            for name, old, new in [('alacritty.toml', 'opacity = 0.85', 'opacity = 1.0'), ('ghostty.conf', 'background-opacity = 0.85', 'background-opacity = 1.0'), ('kitty.conf', 'background_opacity 0.85', 'background_opacity 1.0'), ('foot.ini', 'alpha=0.85', 'alpha=1.0')]:
                 p = theme_stage / name
                 p.write_text(p.read_text().replace(old, new))
         targets = [(theme_stage, config / 'themes/lcars')]
@@ -155,6 +155,14 @@ def install(home, source=ROOT, theme_only=False, animation=True, transparency=Tr
             shutil.copy2(source / 'scripts/foot-opacity.py', helper)
             helper.chmod(0o755)
             targets.append((helper, config / 'hooks/theme-set.d/lcars-foot-opacity.py'))
+        vscode_helper = stage / 'lcars-vscode-terminal.py'
+        shutil.copy2(source / 'scripts/vscode-terminal-map.py', vscode_helper)
+        vscode_helper.chmod(0o755)
+        targets.append((vscode_helper, config / 'hooks/lcars-vscode-terminal.py'))
+        wrapper = stage / 'lcars-vscode-terminal.sh'
+        wrapper.write_text('#!/bin/bash\nexec python3 "$HOME/.config/omarchy/hooks/lcars-vscode-terminal.py"\n')
+        wrapper.chmod(0o755)
+        targets.append((wrapper, config / 'hooks/theme-set.d/lcars-vscode-terminal.sh'))
         for _, target in targets:
             if target.is_symlink():
                 raise RuntimeError('Refusing to replace symlink: ' + str(target))

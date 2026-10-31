@@ -43,6 +43,9 @@ class Installation(unittest.TestCase):
         self.assertEqual(d['idle'], BASE['idle'])
         self.assertEqual(d['plugins'], BASE['plugins'])
         self.assertEqual(d['bar']['layout']['center'][0]['timezone'], 'Europe/Zurich')
+        hook = self.home/'.config/omarchy/hooks/theme-set.d/lcars-vscode-terminal.sh'
+        self.assertIn('lcars-vscode-terminal.py', hook.read_text())
+        self.assertTrue((self.home/'.config/omarchy/hooks/lcars-vscode-terminal.py').is_file())
         d['idle']['lock'] = 900
         d['bar']['layout']['right'].append({'id': 'new.widget'})
         d['bar']['layout']['center'][0]['timezone'] = 'UTC'
@@ -55,6 +58,7 @@ class Installation(unittest.TestCase):
         self.assertEqual(d['bar']['layout']['center'][0]['id'], 'omarchy.clock')
         self.assertEqual(d['bar']['layout']['center'][0]['format'], 'HH:mm')
         self.assertEqual(d['bar']['layout']['center'][0]['timezone'], 'UTC')
+        self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-vscode-terminal.sh').exists())
     def test_custom_clones_are_preserved(self):
         d = copy.deepcopy(BASE)
         d['bar']['layout']['center'][0]['id'] = 'custom.clock'
