@@ -60,6 +60,10 @@ class Installation(unittest.TestCase):
         hook = self.home/'.config/omarchy/hooks/theme-set.d/lcars-vscode-terminal.sh'
         self.assertIn('lcars-vscode-terminal.py', hook.read_text())
         self.assertTrue((self.home/'.config/omarchy/hooks/lcars-vscode-terminal.py').is_file())
+        foot_hook = self.home/'.config/omarchy/hooks/theme-set.d/lcars-foot-opacity.sh'
+        self.assertIn('lcars-foot-opacity.py', foot_hook.read_text())
+        self.assertTrue((self.home/'.config/omarchy/hooks/lcars-foot-opacity.py').is_file())
+        self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-foot-opacity.py').exists())
         d['idle']['lock'] = 900
         d['bar']['layout']['right'].append({'id': 'new.widget'})
         d['bar']['layout']['center'][0]['timezone'] = 'UTC'
@@ -73,6 +77,8 @@ class Installation(unittest.TestCase):
         self.assertEqual(d['bar']['layout']['center'][0]['format'], 'HH:mm')
         self.assertEqual(d['bar']['layout']['center'][0]['timezone'], 'UTC')
         self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-vscode-terminal.sh').exists())
+        self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-foot-opacity.sh').exists())
+        self.assertFalse((self.home/'.config/omarchy/hooks/lcars-foot-opacity.py').exists())
     def test_custom_clones_are_preserved(self):
         d = copy.deepcopy(BASE)
         d['bar']['layout']['center'][0]['id'] = 'custom.clock'
@@ -125,7 +131,8 @@ class Installation(unittest.TestCase):
         self.install(source=source, reinstall=True)
         theme = self.home/'.config/omarchy/themes/lcars'
         self.assertIn('alpha=1.0', (theme/'foot.ini').read_text())
-        self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-foot-opacity.py').exists())
+        self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-foot-opacity.sh').exists())
+        self.assertFalse((self.home/'.config/omarchy/hooks/lcars-foot-opacity.py').exists())
     def test_reinstall_keeps_theme_only(self):
         source = self.source_copy()
         self.install(source=source, theme_only=True)

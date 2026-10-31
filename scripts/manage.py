@@ -129,6 +129,10 @@ def populate_stage(stage, source, transparency):
         helper = stage / 'lcars-foot-opacity.py'
         shutil.copy2(source / 'scripts/foot-opacity.py', helper)
         helper.chmod(0o755)
+        # Theme hooks are executed with bash, which does not honor a Python shebang.
+        foot_wrapper = stage / 'lcars-foot-opacity.sh'
+        foot_wrapper.write_text('#!/bin/bash\nexec python3 "$HOME/.config/omarchy/hooks/lcars-foot-opacity.py"\n')
+        foot_wrapper.chmod(0o755)
     vscode_helper = stage / 'lcars-vscode-terminal.py'
     shutil.copy2(source / 'scripts/vscode-terminal-map.py', vscode_helper)
     vscode_helper.chmod(0o755)
@@ -155,7 +159,7 @@ def managed_source(target, theme_stage, source, stage):
             raise RuntimeError('No source for managed path: ' + str(target))
         return plugin
     staged = stage / target.name
-    if target.name in ['lcars-foot-opacity.py', 'lcars-vscode-terminal.py', 'lcars-vscode-terminal.sh'] and staged.exists():
+    if target.name in ['lcars-foot-opacity.py', 'lcars-foot-opacity.sh', 'lcars-vscode-terminal.py', 'lcars-vscode-terminal.sh'] and staged.exists():
         return staged
     raise RuntimeError('No source for managed path: ' + str(target))
 
@@ -191,7 +195,8 @@ def install(home, source=ROOT, theme_only=False, transparency=True, apply=True, 
             for plugin in sorted((source / 'plugins').iterdir()):
                 targets.append((plugin, config / 'plugins' / plugin.name))
         if transparency:
-            targets.append((stage / 'lcars-foot-opacity.py', config / 'hooks/theme-set.d/lcars-foot-opacity.py'))
+            targets.append((stage / 'lcars-foot-opacity.py', config / 'hooks/lcars-foot-opacity.py'))
+            targets.append((stage / 'lcars-foot-opacity.sh', config / 'hooks/theme-set.d/lcars-foot-opacity.sh'))
         targets.append((stage / 'lcars-vscode-terminal.py', config / 'hooks/lcars-vscode-terminal.py'))
         targets.append((stage / 'lcars-vscode-terminal.sh', config / 'hooks/theme-set.d/lcars-vscode-terminal.sh'))
         for _, target in targets:
