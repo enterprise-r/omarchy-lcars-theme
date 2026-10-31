@@ -87,10 +87,11 @@ class Installation(unittest.TestCase):
         with self.assertRaises(RuntimeError): self.install()
         self.assertEqual(p.read_text(), 'personal')
         self.assertEqual(json.loads(self.shell.read_text()), BASE)
-    def test_no_transparency_or_animation(self):
-        self.install(animation=False, transparency=False)
+    def test_no_transparency_still_ships_hidden_stars(self):
+        self.install(transparency=False)
         d = json.loads(self.shell.read_text())
-        self.assertNotIn('lcars.stars', [x['id'] for x in d['bar']['layout']['left']])
+        self.assertIn({'id': 'lcars.stars', 'shown': False}, d['bar']['layout']['left'])
+        self.assertTrue((self.home/'.config/omarchy/plugins/lcars.stars').is_dir())
         self.assertIn('lcars.plate', [x['id'] for x in d['bar']['layout']['right']])
         p = self.home/'.config/omarchy/themes/lcars'
         self.assertIn('active_opacity = 1.0', (p/'hyprland.lua').read_text())

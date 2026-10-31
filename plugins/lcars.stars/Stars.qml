@@ -11,27 +11,67 @@ BarWidget {
   implicitWidth: 0
   implicitHeight: barSize
   property real elapsed: 0
+  // Off until a right-click. The choice used to be an install flag.
+  readonly property bool shown: setting("shown", false) === true
+  readonly property string starsId: moduleName !== "" ? moduleName : "lcars.stars"
+  // Plugin widgets see a facade, not the bar. Hiding parks the surface
+  // off-screen and leaves the window visible, so this is the stop signal.
+  readonly property bool barParked: {
+    var shell = root.bar ? root.bar.shell : null
+    var state = shell ? shell.bar : null
+    return !!(state && state.barHidden === true)
+  }
+  readonly property bool animating: root.lcars && root.shown && !root.vertical
+      && root.visible && !root.barParked
+      && root.hostWindow !== null && root.hostWindow.visible
+
+  function toggleStars() {
+    var entry = { id: root.starsId }
+    for (var key in root.settings) if (key !== "id") entry[key] = root.settings[key]
+    entry.shown = !root.shown
+    root.settings = entry
+    if (root.bar && root.bar.shell && typeof root.bar.shell.updateEntryInline === "function")
+      root.bar.shell.updateEntryInline(root.starsId, entry)
+  }
 
   Timer {
     interval: 50
-    running: field.visible && root.hostWindow !== null && root.hostWindow.visible
+    running: root.animating
     repeat: true
     onTriggered: root.elapsed += 0.05
+  }
+
+  // The field and the click catcher are reparented onto the bar. Drop them
+  // on the way out so a reload cannot leave a trail field behind.
+  Component.onDestruction: {
+    if (toggleArea && toggleArea.parent !== root) toggleArea.destroy()
+    if (field && field.parent !== root) field.destroy()
+  }
+
+  // Behind the controls. Widgets that use the right button keep it; a
+  // right-click on the rest of the bar shows or hides the trails.
+  MouseArea {
+    id: toggleArea
+    parent: root.hostWindow ? root.hostWindow.contentItem : root
+    anchors.fill: parent
+    z: -9
+    enabled: root.lcars && !root.vertical && root.hostWindow !== null
+    acceptedButtons: Qt.RightButton
+    onClicked: root.toggleStars()
   }
 
   Item {
     id: field
     // Paint into this monitor's existing bar surface, below every control.
-    // No extra layer surface, input handler, or replacement bar is needed.
     parent: root.hostWindow ? root.hostWindow.contentItem : root
     anchors.fill: parent
     z: -10
     clip: true
-    visible: root.lcars && !root.vertical && root.visible && root.hostWindow !== null
+    visible: root.animating
 
     // Distant points provide depth between the occasional approaching streaks.
     Repeater {
-      model: root.lcars ? 9 : 0
+      model: root.animating ? 9 : 0
       Rectangle {
         required property int index
         x: ((index * 0.6180339 + 0.17) % 1) * field.width
@@ -45,7 +85,7 @@ BarWidget {
     }
 
     Repeater {
-      model: root.lcars ? 16 : 0
+      model: root.animating ? 16 : 0
       Item {
         id: star
         required property int index

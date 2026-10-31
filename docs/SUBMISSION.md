@@ -17,8 +17,8 @@ Repo: https://github.com/yzingher/omarchy-lcars-theme
 
 The complete experience targets Omarchy 4/Quattro's Quickshell shell (tested on
 4.0.0.alpha). One installer sets up the theme and widgets together, preserves
-custom widgets, makes backups, and supports uninstall. Palette-only,
-no-animation, and opaque options are available. The README includes a real
+custom widgets, makes backups, and supports uninstall. Palette-only and
+opaque options are available. The README includes a real
 desktop screenshot and animated bar preview.
 
 Would this fit the Extra Themes page, with a note that the full bar requires

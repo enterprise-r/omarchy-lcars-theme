@@ -54,7 +54,7 @@ def remove(path):
     elif path.exists():
         path.unlink()
 
-def patch_shell(original, animation=True):
+def patch_shell(original):
     d = copy.deepcopy(original)
     if d.get('version') != 1 or not isinstance(d.get('bar', {}).get('layout'), dict):
         raise RuntimeError('Unsupported shell.json format; no configuration was changed.')
@@ -72,8 +72,10 @@ def patch_shell(original, animation=True):
     anchor = d['bar'].get('centerAnchor')
     if anchor == 'omarchy.clock' and 'lcars.clock' in changed:
         d['bar']['centerAnchor'] = 'lcars.clock'
-    if animation:
-        d['bar']['layout'].setdefault('left', []).append({'id': 'lcars.stars'})
+    # Stars stay in the layout and start hidden. A right-click on the bar shows them.
+    left = d['bar']['layout'].setdefault('left', [])
+    if not any(entry.get('id') == 'lcars.stars' for entry in left):
+        left.append({'id': 'lcars.stars', 'shown': False})
     right = d['bar']['layout'].setdefault('right', [])
     right.append({'id': 'lcars.plate'})
     # Menu actions still route to the native menu; the clone only styles its bar entry.
@@ -111,7 +113,7 @@ def check_hyprland():
 def paths(home):
     return home / '.config/omarchy', home / '.local/state/omarchy-lcars'
 
-def install(home, source=ROOT, theme_only=False, animation=True, transparency=True, apply=True, omarchy_path=None):
+def install(home, source=ROOT, theme_only=False, transparency=True, apply=True, omarchy_path=None):
     config, state = paths(home)
     record_file = state / 'install.json'
     if record_file.exists():
@@ -123,7 +125,7 @@ def install(home, source=ROOT, theme_only=False, animation=True, transparency=Tr
     before = json.loads(shell_file.read_text()) if shell_file.exists() else None
     if not theme_only and before is None:
         raise RuntimeError('No existing shell.json. Start Omarchy once before installing widgets.')
-    after, replaced = (before, {}) if theme_only else patch_shell(before, animation)
+    after, replaced = (before, {}) if theme_only else patch_shell(before)
     previous = home / '.local/state/omarchy/current/theme.name'
     previous_theme = previous.read_text().strip() if previous.exists() else ''
     if apply and not previous_theme:
@@ -147,8 +149,6 @@ def install(home, source=ROOT, theme_only=False, animation=True, transparency=Tr
         targets = [(theme_stage, config / 'themes/lcars')]
         if not theme_only:
             for plugin in sorted((source / 'plugins').iterdir()):
-                if plugin.name == 'lcars.stars' and not animation:
-                    continue
                 targets.append((plugin, config / 'plugins' / plugin.name))
         if transparency:
             helper = stage / 'lcars-foot-opacity.py'
@@ -246,7 +246,6 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--uninstall', action='store_true')
     p.add_argument('--theme-only', action='store_true')
-    p.add_argument('--no-animation', action='store_true')
     p.add_argument('--no-transparency', action='store_true')
     p.add_argument('--no-apply', action='store_true', help='install files without reloading the live desktop')
     args = p.parse_args()
@@ -257,7 +256,7 @@ def main():
             record = uninstall(Path.home(), apply=not args.no_apply)
             print('LCARS uninstalled. Backup retained:', record['backup'])
         else:
-            record = install(Path.home(), theme_only=args.theme_only, animation=not args.no_animation, transparency=not args.no_transparency, apply=not args.no_apply)
+            record = install(Path.home(), theme_only=args.theme_only, transparency=not args.no_transparency, apply=not args.no_apply)
             print('LCARS installed. Backup:', record['backup'])
             print('Existing custom widgets were preserved. Restart applications if they do not live-reload their theme.')
     except (RuntimeError, OSError, ValueError, subprocess.CalledProcessError) as exc:

@@ -37,7 +37,6 @@ The clock keeps the label already in your shell configuration.
 ## Choose your level of immersion
 
 ```bash
-./install.sh --no-animation       # LCARS panels and colors, without moving stars
 ./install.sh --no-transparency    # Keep windows and terminals opaque
 ./install.sh --theme-only         # Palette and wallpaper, without bar changes
 ```
@@ -77,13 +76,16 @@ If application colors do not update live, reopen that application.
 
 The star widget takes zero layout width. It paints into the existing bar
 surface behind the controls; colored panels naturally cover the stars as they
-pass beneath them. It adds no overlay window and no mouse or keyboard handler.
+pass beneath them. It adds no overlay window. The trails start hidden.
+Right-click an empty part of the bar to show or hide them. The menu and the
+clock keep their own right-click actions.
 
 There are 16 approaching stars and 9 faint distant points. Perspective makes
 motion and trail length increase toward the edges, with mostly white and icy
 blue light and an occasional warm tail. A 20 fps timer keeps the small bar
-animation independent of the monitor's full refresh rate. It pauses when the
-widget is invisible or the LCARS palette is inactive.
+animation independent of the monitor's full refresh rate. It runs only while
+the trails are shown on a visible bar, and it stops when they are hidden, the
+bar is parked off-screen, or the LCARS palette is inactive.
 
 The shared theme colors style application interiors according to each app's
 support. This does not inject fictional title bars into editors or websites.
