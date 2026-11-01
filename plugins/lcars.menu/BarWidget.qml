@@ -37,7 +37,7 @@ BarWidget {
       anchors.top: parent.top
       height: parent.height - 2
       radius: 12
-      color: "#77af8a"
+      color: "#9add6d"
     }
     Text {
       visible: root.lcars

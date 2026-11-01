@@ -209,7 +209,7 @@ def render(colors):
     right_box = (hx + hw - right_w, hy, right_w, hh)
     center_box = (hx + (hw - center_w) / 2, hy, center_w, hh)
 
-    board.header_pill(left_box, colors["accent"], "LCARS", 54, 10)
+    board.header_pill(left_box, colors["bright_green"], "LCARS", 54, 10)
     board.header_pill(center_box, colors["magenta"], "COLOR INDEX", 48, 6)
     board.header_pill(right_box, colors["accent"], accent_code, 44, 2)
 
