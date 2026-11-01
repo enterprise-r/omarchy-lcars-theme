@@ -45,8 +45,7 @@ class Installation(unittest.TestCase):
             shutil.copy2(ROOT/name, source/name)
         shutil.copytree(ROOT/'backgrounds', source/'backgrounds')
         shutil.copytree(ROOT/'plugins', source/'plugins')
-        for name in ['foot-opacity.py', 'vscode-terminal-map.py']:
-            shutil.copy2(ROOT/'scripts'/name, source/'scripts'/name)
+        shutil.copy2(ROOT/'scripts'/'foot-opacity.py', source/'scripts'/'foot-opacity.py')
         return source
     def test_round_trip_preserves_unrelated_changes(self):
         self.install()
@@ -58,9 +57,8 @@ class Installation(unittest.TestCase):
         self.assertEqual(d['idle'], BASE['idle'])
         self.assertEqual(d['plugins'], BASE['plugins'])
         self.assertEqual(d['bar']['layout']['center'][0]['timezone'], 'Europe/Zurich')
-        hook = self.home/'.config/omarchy/hooks/theme-set.d/lcars-vscode-terminal.sh'
-        self.assertIn('lcars-vscode-terminal.py', hook.read_text())
-        self.assertTrue((self.home/'.config/omarchy/hooks/lcars-vscode-terminal.py').is_file())
+        self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-vscode-terminal.sh').exists())
+        self.assertFalse((self.home/'.config/omarchy/hooks/lcars-vscode-terminal.py').exists())
         foot_hook = self.home/'.config/omarchy/hooks/theme-set.d/lcars-foot-opacity.sh'
         self.assertIn('lcars-foot-opacity.py', foot_hook.read_text())
         self.assertTrue((self.home/'.config/omarchy/hooks/lcars-foot-opacity.py').is_file())
@@ -114,11 +112,11 @@ class Installation(unittest.TestCase):
         colors = source/'colors.toml'
         colors.write_text(colors.read_text().replace('yellow = "#e4d58b"', yellow))
         foot = source/'foot.ini'
-        foot.write_text(foot.read_text().replace('regular6=e4d58b', 'regular6=abcdef'))
+        foot.write_text(foot.read_text().replace('regular3=f4b965', 'regular3=abcdef'))
         record = self.install(source=source, reinstall=True)
         installed = self.home/'.config/omarchy/themes/lcars'
         self.assertIn(yellow, (installed/'colors.toml').read_text())
-        self.assertIn('regular6=abcdef', (installed/'foot.ini').read_text())
+        self.assertIn('regular3=abcdef', (installed/'foot.ini').read_text())
         self.assertEqual(m.digest(installed), next(e['digest'] for e in record['targets'] if e['path'].endswith('/themes/lcars')))
         restored = json.loads(self.shell.read_text())
         self.assertEqual(restored['idle']['lock'], 900)
@@ -126,6 +124,26 @@ class Installation(unittest.TestCase):
         self.assertEqual([x['id'] for x in restored['bar']['layout']['left']].count('lcars.stars'), 1)
         m.uninstall(self.home, apply=False)
         self.assertEqual(personal.read_text(), 'personal palette')
+    def test_reinstall_removes_retired_vscode_hook(self):
+        source = self.source_copy()
+        self.install(source=source)
+        hook = self.home/'.config/omarchy/hooks/theme-set.d/lcars-vscode-terminal.sh'
+        helper = self.home/'.config/omarchy/hooks/lcars-vscode-terminal.py'
+        hook.parent.mkdir(parents=True, exist_ok=True)
+        hook.write_text('#!/bin/bash\nexec python3 "$HOME/.config/omarchy/hooks/lcars-vscode-terminal.py"\n')
+        helper.write_text('print("old map")\n')
+        record_path = self.home/'.local/state/omarchy-lcars/install.json'
+        record = json.loads(record_path.read_text())
+        record['targets'].extend([
+            {'path': str(helper), 'saved': None, 'digest': m.digest(helper)},
+            {'path': str(hook), 'saved': None, 'digest': m.digest(hook)},
+        ])
+        record_path.write_text(json.dumps(record))
+        self.install(source=source, reinstall=True)
+        self.assertFalse(hook.exists())
+        self.assertFalse(helper.exists())
+        saved = json.loads(record_path.read_text())
+        self.assertFalse(any('lcars-vscode-terminal' in entry['path'] for entry in saved['targets']))
     def test_reinstall_keeps_opaque_install(self):
         source = self.source_copy()
         self.install(source=source, transparency=False)

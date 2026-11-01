@@ -14,6 +14,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = ['menu', 'clock', 'workspaces', 'weather', 'keyboard-layout', 'system-update', 'indicators']
 THEME_FILES = ['colors.toml', 'shell.toml', 'hyprland.lua', 'alacritty.toml', 'ghostty.conf', 'kitty.conf', 'foot.ini', 'icons.theme']
+# Earlier installs copied Foot's swapped slots into VS Code after each theme set.
+RETIRED_HOOKS = {'lcars-vscode-terminal.py', 'lcars-vscode-terminal.sh'}
 
 def write_json(path, data):
     # A symlink to a regular file is a versioned dotfile. Replace that file so
@@ -206,12 +208,6 @@ def populate_stage(stage, source, transparency):
         foot_wrapper = stage / 'lcars-foot-opacity.sh'
         foot_wrapper.write_text('#!/bin/bash\nexec python3 "$HOME/.config/omarchy/hooks/lcars-foot-opacity.py"\n')
         foot_wrapper.chmod(0o755)
-    vscode_helper = stage / 'lcars-vscode-terminal.py'
-    shutil.copy2(source / 'scripts/vscode-terminal-map.py', vscode_helper)
-    vscode_helper.chmod(0o755)
-    wrapper = stage / 'lcars-vscode-terminal.sh'
-    wrapper.write_text('#!/bin/bash\nexec python3 "$HOME/.config/omarchy/hooks/lcars-vscode-terminal.py"\n')
-    wrapper.chmod(0o755)
     return theme_stage
 
 def apply_lcars(theme_only):
@@ -232,7 +228,7 @@ def managed_source(target, theme_stage, source, stage):
             return None
         return plugin
     staged = stage / target.name
-    if target.name in ['lcars-foot-opacity.py', 'lcars-foot-opacity.sh', 'lcars-vscode-terminal.py', 'lcars-vscode-terminal.sh'] and staged.exists():
+    if target.name in ['lcars-foot-opacity.py', 'lcars-foot-opacity.sh'] and staged.exists():
         return staged
     raise RuntimeError('No source for managed path: ' + str(target))
 
@@ -270,8 +266,6 @@ def install(home, source=ROOT, theme_only=False, transparency=True, apply=True, 
         if transparency:
             targets.append((stage / 'lcars-foot-opacity.py', config / 'hooks/lcars-foot-opacity.py'))
             targets.append((stage / 'lcars-foot-opacity.sh', config / 'hooks/theme-set.d/lcars-foot-opacity.sh'))
-        targets.append((stage / 'lcars-vscode-terminal.py', config / 'hooks/lcars-vscode-terminal.py'))
-        targets.append((stage / 'lcars-vscode-terminal.sh', config / 'hooks/theme-set.d/lcars-vscode-terminal.sh'))
         for _, target in targets:
             if target.is_symlink():
                 raise RuntimeError('Refusing to replace symlink: ' + str(target))
@@ -345,6 +339,12 @@ def refresh(home, source, apply):
             target = Path(entry['path'])
             if target.is_symlink():
                 raise RuntimeError('Refusing to replace symlink: ' + str(target))
+            if target.name in RETIRED_HOOKS:
+                if locally_edited(target, entry.get('digest')):
+                    raise RuntimeError('A managed file has local edits. Back up and restore it before reinstalling: ' + str(target))
+                checked.append((entry, target))
+                sources.append(None)
+                continue
             src = managed_source(target, theme_stage, source, stage)
             if src is None:
                 if target.exists():
@@ -354,13 +354,15 @@ def refresh(home, source, apply):
                 raise RuntimeError('A managed file has local edits. Back up and restore it before reinstalling: ' + str(target))
             checked.append((entry, target))
             sources.append(src)
-        record['targets'] = [entry for entry, _ in checked]
+        record['targets'] = [entry for entry, target in checked if target.name not in RETIRED_HOOKS]
         for index, ((entry, target), src) in enumerate(zip(checked, sources)):
             snap = snapshot / str(index)
             if target.exists():
                 copy_path(target, snap)
             remove(target)
             replaced.append(index)
+            if src is None:
+                continue
             copy_path(src, target)
             restore_symlinks(snap, target)
             entry['digest'] = digest(target)
