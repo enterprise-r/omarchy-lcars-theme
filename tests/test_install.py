@@ -46,10 +46,90 @@ class Installation(unittest.TestCase):
         shutil.copytree(ROOT/'backgrounds', source/'backgrounds')
         shutil.copytree(ROOT/'plugins', source/'plugins')
         shutil.copy2(ROOT/'scripts'/'foot-opacity.py', source/'scripts'/'foot-opacity.py')
+        shutil.copy2(ROOT/'scripts'/'gtk4-libadwaita.py', source/'scripts'/'gtk4-libadwaita.py')
         return source
+    def assert_gtk4_hooks(self):
+        hook = self.home/'.config/omarchy/hooks/theme-set.d/lcars-gtk4.sh'
+        helper = self.home/'.config/omarchy/hooks/lcars-gtk4-libadwaita.py'
+        self.assertTrue(helper.is_file())
+        self.assertIn('lcars-gtk4-libadwaita.py', hook.read_text())
+        self.assertTrue(hook.is_file())
+    def test_gtk4_hooks_install_with_theme_only(self):
+        self.install(theme_only=True)
+        self.assert_gtk4_hooks()
+        m.uninstall(self.home, apply=False)
+        self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-gtk4.sh').exists())
+        self.assertFalse((self.home/'.config/omarchy/hooks/lcars-gtk4-libadwaita.py').exists())
+    def test_reinstall_adds_gtk4_hooks_to_old_record(self):
+        source = self.source_copy()
+        self.install(source=source)
+        record_path = self.home/'.local/state/omarchy-lcars/install.json'
+        record = json.loads(record_path.read_text())
+        record['targets'] = [entry for entry in record['targets'] if 'gtk4' not in entry['path']]
+        for path in [
+            self.home/'.config/omarchy/hooks/lcars-gtk4-libadwaita.py',
+            self.home/'.config/omarchy/hooks/theme-set.d/lcars-gtk4.sh',
+        ]:
+            if path.exists():
+                path.unlink()
+        record_path.write_text(json.dumps(record))
+        self.install(source=source, reinstall=True)
+        self.assert_gtk4_hooks()
+        saved = json.loads(record_path.read_text())
+        self.assertTrue(any(entry['path'].endswith('lcars-gtk4-libadwaita.py') for entry in saved['targets']))
+        self.assertTrue(any(entry['path'].endswith('lcars-gtk4.sh') for entry in saved['targets']))
+    def test_reinstall_copies_plugins_missing_from_old_record(self):
+        source = self.source_copy()
+        self.install(source=source)
+        record_path = self.home/'.local/state/omarchy-lcars/install.json'
+        record = json.loads(record_path.read_text())
+        record['targets'] = [entry for entry in record['targets'] if not entry['path'].endswith('/lcars.plate')]
+        record_path.write_text(json.dumps(record))
+        plate = self.home/'.config/omarchy/plugins/lcars.plate/Plate.qml'
+        plate.write_text('// stale\n')
+        self.install(source=source, reinstall=True)
+        self.assertIn('plateColor', plate.read_text())
+        saved = json.loads(record_path.read_text())
+        self.assertTrue(any(entry['path'].endswith('/lcars.plate') for entry in saved['targets']))
+    def test_gtk4_palette_generator(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('gtk4', ROOT/'scripts'/'gtk4-libadwaita.py')
+        g = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(g)
+        css = g.build_css(g.load_colors(ROOT/'colors.toml'))
+        self.assertIn('@define-color accent_bg_color #f0A202;', css)
+        self.assertIn('--window-bg-color: #0c040f;', css)
+        self.assertIn('--accent-fg-color: #0c040f;', css)
+        home = self.home
+        (home/'.local/state/omarchy/current').mkdir(parents=True, exist_ok=True)
+        (home/'.local/state/omarchy/current/theme.name').write_text('lcars\n')
+        theme = home/'.local/state/omarchy/current/theme'
+        theme.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT/'colors.toml', theme/'colors.toml')
+        self.assertEqual(g.apply(home), 0)
+        gtk_css = (home/'.config/gtk-4.0/gtk.css').read_text()
+        self.assertIn('omarchy-lcars.css', gtk_css)
+        self.assertIn('#f0A202', (home/'.config/gtk-4.0/omarchy-lcars.css').read_text())
+        (home/'.local/state/omarchy/current/theme.name').write_text('nord\n')
+        self.assertEqual(g.apply(home), 0)
+        self.assertFalse((home/'.config/gtk-4.0/omarchy-lcars.css').exists())
+        self.assertFalse((home/'.config/gtk-4.0/gtk.css').exists())
+        # Preserve foreign user CSS around the managed block.
+        (home/'.local/state/omarchy/current/theme.name').write_text('lcars\n')
+        (home/'.config/gtk-4.0').mkdir(parents=True, exist_ok=True)
+        (home/'.config/gtk-4.0/gtk.css').write_text('/* mine */\nwindow { opacity: 1; }\n')
+        self.assertEqual(g.apply(home), 0)
+        text = (home/'.config/gtk-4.0/gtk.css').read_text()
+        self.assertIn('/* mine */', text)
+        self.assertIn('BEGIN omarchy-lcars gtk4', text)
+        self.assertEqual(g.apply(home, clear=True), 0)
+        self.assertEqual((home/'.config/gtk-4.0/gtk.css').read_text(), '/* mine */\nwindow { opacity: 1; }\n')
+        self.assertFalse((home/'.config/gtk-4.0/omarchy-lcars.css').exists())
     def test_round_trip_preserves_unrelated_changes(self):
         self.install()
+        self.assert_gtk4_hooks()
         d = json.loads(self.shell.read_text())
+        # keep the rest of the original test body by re-reading below marker if needed
         self.assertEqual(d['bar']['layout']['center'][0]['format'], 'HH:mm')
         ids = [x['id'] for x in d['bar']['layout']['right']]
         self.assertIn('lcars.plate', ids)
@@ -78,6 +158,8 @@ class Installation(unittest.TestCase):
         self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-vscode-terminal.sh').exists())
         self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-foot-opacity.sh').exists())
         self.assertFalse((self.home/'.config/omarchy/hooks/lcars-foot-opacity.py').exists())
+        self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-gtk4.sh').exists())
+        self.assertFalse((self.home/'.config/omarchy/hooks/lcars-gtk4-libadwaita.py').exists())
     def test_custom_clones_are_preserved(self):
         d = copy.deepcopy(BASE)
         d['bar']['layout']['center'][0]['id'] = 'custom.clock'

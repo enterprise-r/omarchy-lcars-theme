@@ -23,7 +23,32 @@ BarWidget {
   }
   readonly property bool animating: root.lcars && root.shown && !root.vertical
       && root.visible && !root.barParked
-      && root.hostWindow !== null && root.hostWindow.visible
+      && root.barStrip !== null && root.hostWindow !== null && root.hostWindow.visible
+
+  // The bar window now spans the whole screen and stays clear past the
+  // strip. Parenting into the window paints the trails across the desktop.
+  property Item barStrip: null
+
+  function findStrip() {
+    var window = root.hostWindow
+    if (!window || !window.contentItem) return null
+    var item = root
+    var guard = 0
+    while (item && item.parent && item.parent !== window.contentItem && guard++ < 16)
+      item = item.parent
+    if (!item || item.parent !== window.contentItem) return null
+    // Reject the screen-sized surface. The strip is only about as thick
+    // as the bar, plus a notch floor on some panels.
+    var cross = root.vertical ? item.width : item.height
+    var thickness = Math.max(1, root.barSize)
+    if (cross < 1 || cross > thickness * 4) return null
+    return item
+  }
+
+  function trackStrip() {
+    var next = root.findStrip()
+    if (root.barStrip !== next) root.barStrip = next
+  }
 
   function toggleStars() {
     var entry = { id: root.starsId }
@@ -34,6 +59,23 @@ BarWidget {
       root.bar.shell.updateEntryInline(root.starsId, entry)
   }
 
+  onParentChanged: root.trackStrip()
+  onHostWindowChanged: root.trackStrip()
+  Component.onCompleted: Qt.callLater(root.trackStrip)
+
+  Timer {
+    interval: 200
+    repeat: true
+    running: root.lcars && root.barStrip === null
+    triggeredOnStart: true
+    property int ticks: 0
+    onTriggered: {
+      root.trackStrip()
+      ticks++
+      if (ticks >= 20) running = false
+    }
+  }
+
   Timer {
     interval: 50
     running: root.animating
@@ -41,8 +83,8 @@ BarWidget {
     onTriggered: root.elapsed += 0.05
   }
 
-  // The field and the click catcher are reparented onto the bar. Drop them
-  // on the way out so a reload cannot leave a trail field behind.
+  // The field and the click catcher are reparented onto the bar strip.
+  // Drop them on the way out so a reload cannot leave a trail field behind.
   Component.onDestruction: {
     if (toggleArea && toggleArea.parent !== root) toggleArea.destroy()
     if (field && field.parent !== root) field.destroy()
@@ -52,18 +94,18 @@ BarWidget {
   // right-click on the rest of the bar shows or hides the trails.
   MouseArea {
     id: toggleArea
-    parent: root.hostWindow ? root.hostWindow.contentItem : root
+    parent: root.barStrip ? root.barStrip : root
     anchors.fill: parent
     z: -9
-    enabled: root.lcars && !root.vertical && root.hostWindow !== null
+    enabled: root.lcars && !root.vertical && root.barStrip !== null
     acceptedButtons: Qt.RightButton
     onClicked: root.toggleStars()
   }
 
   Item {
     id: field
-    // Paint into this monitor's existing bar surface, below every control.
-    parent: root.hostWindow ? root.hostWindow.contentItem : root
+    // Paint into this monitor's bar strip, below every control.
+    parent: root.barStrip ? root.barStrip : root
     anchors.fill: parent
     z: -10
     clip: true

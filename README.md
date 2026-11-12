@@ -96,6 +96,12 @@ bar is parked off-screen, or the LCARS palette is inactive.
 The shared theme colors style application interiors according to each app's
 support. This does not inject fictional title bars into editors or websites.
 
+GTK3 apps can already follow Omarchy through Omagtk. GTK4 / libadwaita apps
+ignore the gtk-theme setting, so the installer also drops a theme-set hook that
+writes LCARS colors into `~/.config/gtk-4.0/` while LCARS is active and clears
+them when you leave the theme. Reopen or relaunch GTK4 apps after a switch if
+a long-lived daemon does not repaint on its own.
+
 ## Development
 
 ```bash
@@ -104,11 +110,14 @@ python3 scripts/palette.py
 ```
 
 `scripts/palette.py` redraws `assets/palette.png` from `colors.toml`.
+`scripts/gtk4-libadwaita.py` renders the GTK4 / libadwaita palette from
+`colors.toml` (also used by the theme-set hook).
 
 The tests use temporary directories and never touch your real desktop. They
 cover install/uninstall, custom widget preservation, restore of an existing
-theme, optional features, conflicts, local edits, symlinks, and rollback.
-`--no-apply` installs files without running live theme/shell reload commands.
+theme, optional features, conflicts, local edits, symlinks, GTK4 palette
+hooks, and rollback. `--no-apply` installs files without running live
+theme/shell reload commands.
 
 See [compatibility and attribution](docs/COMPATIBILITY.md) and
 [wallpaper provenance](docs/wallpaper-prompt.txt).

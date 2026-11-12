@@ -16,6 +16,10 @@ SOURCES = ['menu', 'clock', 'workspaces', 'weather', 'keyboard-layout', 'system-
 THEME_FILES = ['colors.toml', 'shell.toml', 'hyprland.lua', 'alacritty.toml', 'ghostty.conf', 'kitty.conf', 'foot.ini', 'icons.theme']
 # Earlier installs copied Foot's swapped slots into VS Code after each theme set.
 RETIRED_HOOKS = {'lcars-vscode-terminal.py', 'lcars-vscode-terminal.sh'}
+# Always shipped with the palette so GTK4/libadwaita apps can follow LCARS.
+GTK4_HOOK_PY = 'lcars-gtk4-libadwaita.py'
+GTK4_HOOK_SH = 'lcars-gtk4.sh'
+GTK4_HOOK_NAMES = {GTK4_HOOK_PY, GTK4_HOOK_SH}
 
 def write_json(path, data):
     # A symlink to a regular file is a versioned dotfile. Replace that file so
@@ -208,10 +212,51 @@ def populate_stage(stage, source, transparency):
         foot_wrapper = stage / 'lcars-foot-opacity.sh'
         foot_wrapper.write_text('#!/bin/bash\nexec python3 "$HOME/.config/omarchy/hooks/lcars-foot-opacity.py"\n')
         foot_wrapper.chmod(0o755)
+    stage_gtk4_hooks(stage, source)
     return theme_stage
+
+def stage_gtk4_hooks(stage, source):
+    """GTK4/libadwaita ignore gtk-theme; ship a palette writer and theme-set hook."""
+    helper = stage / GTK4_HOOK_PY
+    shutil.copy2(source / 'scripts/gtk4-libadwaita.py', helper)
+    helper.chmod(0o755)
+    wrapper = stage / GTK4_HOOK_SH
+    wrapper.write_text(
+        '#!/bin/bash\n'
+        f'exec python3 "$HOME/.config/omarchy/hooks/{GTK4_HOOK_PY}"\n'
+    )
+    wrapper.chmod(0o755)
+
+def gtk4_hook_targets(config, stage):
+    return [
+        (stage / GTK4_HOOK_PY, config / 'hooks' / GTK4_HOOK_PY),
+        (stage / GTK4_HOOK_SH, config / 'hooks/theme-set.d' / GTK4_HOOK_SH),
+    ]
+
+def clear_gtk4(home=None):
+    script = ROOT / 'scripts/gtk4-libadwaita.py'
+    if not script.is_file():
+        return
+    cmd = [sys.executable, str(script), '--clear']
+    if home is not None:
+        cmd.extend(['--home', str(home)])
+    subprocess.run(cmd, check=False)
+
+def apply_gtk4(home=None):
+    script = (home or Path.home()) / '.config/omarchy/hooks' / GTK4_HOOK_PY
+    if not script.is_file():
+        script = ROOT / 'scripts/gtk4-libadwaita.py'
+    if not script.is_file():
+        return
+    cmd = [sys.executable, str(script)]
+    if home is not None:
+        cmd.extend(['--home', str(home)])
+    subprocess.run(cmd, check=False)
 
 def apply_lcars(theme_only):
     subprocess.run(['omarchy', 'theme', 'set', 'lcars'], check=True)
+    # theme-set runs the hook; call it again so --no-hook races still paint GTK4.
+    apply_gtk4()
     if not theme_only:
         subprocess.run(['omarchy', 'restart', 'shell'], check=True)
     subprocess.run(['hyprctl', 'reload'], check=True)
@@ -228,7 +273,7 @@ def managed_source(target, theme_stage, source, stage):
             return None
         return plugin
     staged = stage / target.name
-    if target.name in ['lcars-foot-opacity.py', 'lcars-foot-opacity.sh'] and staged.exists():
+    if target.name in ['lcars-foot-opacity.py', 'lcars-foot-opacity.sh', GTK4_HOOK_PY, GTK4_HOOK_SH] and staged.exists():
         return staged
     raise RuntimeError('No source for managed path: ' + str(target))
 
@@ -266,6 +311,7 @@ def install(home, source=ROOT, theme_only=False, transparency=True, apply=True, 
         if transparency:
             targets.append((stage / 'lcars-foot-opacity.py', config / 'hooks/lcars-foot-opacity.py'))
             targets.append((stage / 'lcars-foot-opacity.sh', config / 'hooks/theme-set.d/lcars-foot-opacity.sh'))
+        targets.extend(gtk4_hook_targets(config, stage))
         for _, target in targets:
             if target.is_symlink():
                 raise RuntimeError('Refusing to replace symlink: ' + str(target))
@@ -335,6 +381,21 @@ def refresh(home, source, apply):
         theme_stage = populate_stage(stage, source, transparency)
         checked = []
         sources = []
+        existing_paths = {entry['path'] for entry in record['targets']}
+        for src, target in gtk4_hook_targets(config, stage):
+            if str(target) not in existing_paths:
+                record['targets'].append({'path': str(target), 'saved': None, 'digest': None})
+                existing_paths.add(str(target))
+        # Plugins added after the install record was written still have to be
+        # copied. A hot reload does not rebuild bar widgets already on screen.
+        if not theme_only:
+            for plugin in sorted((source / 'plugins').iterdir()):
+                if not plugin.is_dir():
+                    continue
+                target = config / 'plugins' / plugin.name
+                if str(target) not in existing_paths:
+                    record['targets'].append({'path': str(target), 'saved': None, 'digest': None})
+                    existing_paths.add(str(target))
         for entry in record['targets']:
             target = Path(entry['path'])
             if target.is_symlink():
@@ -350,7 +411,7 @@ def refresh(home, source, apply):
                 if target.exists():
                     raise RuntimeError('No source for managed path: ' + str(target))
                 continue
-            if locally_edited(target, entry.get('digest'), src):
+            if entry.get('digest') is not None and locally_edited(target, entry.get('digest'), src):
                 raise RuntimeError('A managed file has local edits. Back up and restore it before reinstalling: ' + str(target))
             checked.append((entry, target))
             sources.append(src)
@@ -413,9 +474,12 @@ def uninstall(home, apply=True):
         if active == 'lcars' and record['previous_theme']:
             subprocess.run(['omarchy', 'theme', 'set', record['previous_theme']], check=True)
         subprocess.run([sys.executable, str(ROOT / 'scripts/foot-opacity.py')], check=True)
+        clear_gtk4(home)
         subprocess.run(['omarchy', 'restart', 'shell'], check=True)
         subprocess.run(['hyprctl', 'reload'], check=True)
         check_hyprland()
+    else:
+        clear_gtk4(home)
     record_file.unlink()
     return record
 

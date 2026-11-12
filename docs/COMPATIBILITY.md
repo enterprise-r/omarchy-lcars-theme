@@ -19,9 +19,12 @@ license was retrieved; this is a reference, not a claim that every locally
 installed source file exactly matches that commit. See `OMARCHY-LICENSE`.
 
 The animation uses a zero-width bar widget whose visual child is parented into
-its host window's content item at a lower stacking order than the controls.
-Future changes to that scene hierarchy or the plugin interfaces may require
-an update. The normal theme-color check disables the effect with other palettes.
+the bar strip, the child of the host window that actually holds the controls,
+at a lower stacking order than those controls. The window itself spans the
+screen and stays clear past the strip; parenting into the window paints the
+trails across the desktop. Future changes to that scene hierarchy or the
+plugin interfaces may require an update. The normal theme-color check
+disables the effect with other palettes.
 
 Screenshots and the animated bar are captures of the actual running packaged
 widgets on a clean demo workspace; terminal content is illustrative.
