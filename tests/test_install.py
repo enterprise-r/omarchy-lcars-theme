@@ -100,6 +100,20 @@ class Installation(unittest.TestCase):
         self.assertIn('@define-color accent_bg_color #f0A202;', css)
         self.assertIn('--window-bg-color: #0c040f;', css)
         self.assertIn('--accent-fg-color: #0c040f;', css)
+        # Standalone accent is the palette gold. The oklab lighten leaves sRGB.
+        self.assertIn('--accent-color: #f0A202;', css)
+        self.assertNotIn('oklab(', css)
+        # Surfaces stay in the window hue, not the terminal gray or selection purple.
+        self.assertNotIn('#181820', css)
+        self.assertNotIn('#41285b', css)
+        header = g.scale('#0c040f', 2.55)
+        card = g.scale('#0c040f', 2.2)
+        self.assertIn(f'--headerbar-bg-color: {header};', css)
+        self.assertIn(f'--card-bg-color: {card};', css)
+        hr, hg, hb = g._rgb(header)
+        self.assertGreater(hb, hr)
+        self.assertGreater(hr, hg)
+        self.assertIn('--headerbar-border-color: #a5ace1;', css)
         home = self.home
         (home/'.local/state/omarchy/current').mkdir(parents=True, exist_ok=True)
         (home/'.local/state/omarchy/current/theme.name').write_text('lcars\n')
