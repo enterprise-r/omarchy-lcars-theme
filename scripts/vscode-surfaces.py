@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-"""Separate VS Code chrome into a few surface steps.
+"""Separate VS Code chrome with the named LCARS surfaces.
 
 Omarchy's generated theme paints the activity bar, sidebar, editor, panel,
-and title bar with one background, so they read as a single slab. Catppuccin
-keeps those roles apart: a deep frame, a mid sidebar, a lighter field for
-inputs and popups, and the editor as its own surface.
-
-LCARS syntax colors are tuned for the near-black editor, so the code well
-stays `background`. The surrounding chrome steps up through
-`lighter_background` the way Catppuccin steps mantle, base, and surface0.
+and title bar with one background. The code well stays `background`. Cards,
+sidebars, panels, inputs, and the activity/title/status frame share
+`lighter_background`, split by the inactive border. The current tab and
+activity icon use green. Amber is hover only.
 """
 from __future__ import annotations
 
@@ -37,49 +34,9 @@ def _rgb(color: str) -> tuple[int, int, int]:
     return int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
 
 
-def _hex(r: float, g: float, b: float) -> str:
-    return "#{:02x}{:02x}{:02x}".format(
-        max(0, min(255, round(r))),
-        max(0, min(255, round(g))),
-        max(0, min(255, round(b))),
-    )
-
-
-def mix(a: str, b: str, t: float) -> str:
-    ar, ag, ab = _rgb(a)
-    br, bg, bb = _rgb(b)
-    return _hex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t)
-
-
-def scale(color: str, factor: float) -> str:
-    r, g, b = _rgb(color)
-    return _hex(r * factor, g * factor, b * factor)
-
-
 def luma(color: str) -> float:
     r, g, b = _rgb(color)
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
-
-
-def contrast(a: str, b: str) -> float:
-    dark, light = sorted((luma(a), luma(b)))
-    return (light + 0.05) / (dark + 0.05)
-
-
-def scale_to_luma(color: str, target: float) -> str:
-    current = luma(color)
-    if current <= 0.01:
-        return color
-    return scale(color, target / current)
-
-
-def hold_contrast(surface: str, ink: str, anchor: str, minimum: float) -> str:
-    """Darken `surface` toward `anchor` until `ink` can be read on it."""
-    for _ in range(8):
-        if contrast(surface, ink) >= minimum:
-            return surface
-        surface = mix(surface, anchor, 0.18)
-    return surface
 
 
 def load_colors(path: Path) -> dict[str, str]:
@@ -91,10 +48,16 @@ def load_colors(path: Path) -> dict[str, str]:
     optional = (
         "lighter_background",
         "selection",
+        "green",
+        "magenta",
+        "bright_magenta",
+        "bright_foreground",
         "blue",
         "muted",
         "light_foreground",
         "dark_foreground",
+        "hyprland_inactive_border",
+        "hyprland_active_border",
     )
     out = {key: data[key] for key in required}
     for key in optional:
@@ -104,42 +67,40 @@ def load_colors(path: Path) -> dict[str, str]:
 
 
 def surfaces(colors: dict[str, str]) -> dict[str, str] | None:
-    """Catppuccin-style roles, kept in this palette's purple-black hue.
+    """Named roles. Chrome shares the card; borders keep the regions apart.
 
-    The editor stays on `background`. Sidebar uses `lighter_background` when
-    that step is actually lighter. Frame, fields, and the panel sit on either
-    side of the sidebar so each region has its own fill.
+    The editor stays on `background`. Sidebar, panel, frame, and fields use
+    `lighter_background`. Idle rules use the inactive border. Widget edges
+    that have to read clearly use `dark_foreground`.
     """
     editor = colors["background"]
     foreground = colors["foreground"]
     if luma(editor) > luma(foreground):
         return None
 
-    mantle = colors.get("lighter_background", "")
-    if not hex_ok(mantle) or luma(mantle) < luma(editor) + 10:
-        mantle = scale_to_luma(mix(editor, "#c8c0d4", 0.22), luma(editor) + 16)
-
-    frame = scale_to_luma(mantle, min(luma(mantle) + 12, 36))
-    frame = hold_contrast(frame, colors["accent"], editor, 4.5)
-    field = scale_to_luma(mantle, min(max(luma(frame) + 10, luma(mantle) + 18), 46))
-    field = hold_contrast(field, foreground, editor, 4.5)
-    panel = mix(editor, mantle, 0.45)
-
-    selection = colors.get("selection", "")
-    if not hex_ok(selection) or contrast(selection, foreground) < 4.5:
-        selection = field
-
+    card = colors.get("lighter_background", editor)
+    idle = colors.get("hyprland_inactive_border", colors.get("selection", card))
+    visible = colors.get("dark_foreground", colors.get("muted", foreground))
+    active = colors.get("magenta") or colors.get("hyprland_active_border") or colors["accent"]
+    selection = colors.get("selection", idle)
     return {
         "editor": editor,
-        "panel": panel,
-        "sidebar": mantle,
-        "frame": frame,
-        "field": field,
+        "panel": card,
+        "sidebar": card,
+        "frame": card,
+        "field": card,
         "selection": selection,
-        "rule": colors.get("blue", colors["accent"]),
+        "hover": idle,
+        "rule": idle,
+        "edge": visible,
+        "active_edge": active,
+        "focus": colors.get("bright_foreground", foreground),
         "accent": colors["accent"],
+        "current": colors.get("green", colors["accent"]),
+        "link": colors.get("bright_magenta", active),
         "foreground": foreground,
-        "placeholder": colors.get("light_foreground", foreground),
+        "placeholder": colors.get("dark_foreground", colors.get("muted", foreground)),
+        "inactive_icon": colors.get("light_foreground", foreground),
     }
 
 
@@ -154,11 +115,16 @@ def chrome(colors: dict[str, str]) -> dict[str, str]:
     field = role["field"]
     selection = role["selection"]
     rule = role["rule"]
+    edge = role["edge"]
+    active_edge = role["active_edge"]
     accent = role["accent"]
+    current = role["current"]
+    focus = role["focus"]
+    link = role["link"]
     foreground = role["foreground"]
     placeholder = role["placeholder"]
-    hover = mix(sidebar, field, 0.5)
-    quiet_selection = mix(selection, sidebar, 0.55)
+    inactive_icon = role["inactive_icon"]
+    hover = role["hover"]
 
     assigned = {
         "editor.background": editor,
@@ -169,7 +135,9 @@ def chrome(colors: dict[str, str]) -> dict[str, str]:
         "terminal.background": editor,
         "outputView.background": editor,
         "tab.activeBackground": editor,
-        "tab.activeForeground": accent,
+        "tab.activeForeground": current,
+        "tab.activeBorder": current,
+        "tab.activeBorderTop": current,
 
         "panel.background": panel,
 
@@ -187,7 +155,9 @@ def chrome(colors: dict[str, str]) -> dict[str, str]:
         "commandCenter.background": sidebar,
 
         "activityBar.background": frame,
-        "activityBar.foreground": accent,
+        "activityBar.foreground": current,
+        "activityBar.inactiveForeground": inactive_icon,
+        "activityBar.activeBorder": current,
         "activityBar.border": rule,
         "titleBar.activeBackground": frame,
         "titleBar.inactiveBackground": frame,
@@ -198,11 +168,11 @@ def chrome(colors: dict[str, str]) -> dict[str, str]:
         "statusBar.noFolderBorder": rule,
         "editorGroupHeader.tabsBackground": frame,
         "editorGroupHeader.noTabsBackground": frame,
-        "editorGroupHeader.tabsBorder": frame,
-        "editorGroupHeader.border": frame,
-        "tab.border": frame,
+        "editorGroupHeader.tabsBorder": rule,
+        "editorGroupHeader.border": rule,
+        "tab.border": rule,
         "sideBarSectionHeader.background": frame,
-        "sideBarTitle.foreground": accent,
+        "sideBarTitle.foreground": inactive_icon,
         "panelSectionHeader.background": frame,
         "peekViewTitle.background": frame,
         "notificationCenterHeader.background": frame,
@@ -215,16 +185,16 @@ def chrome(colors: dict[str, str]) -> dict[str, str]:
         "checkbox.background": field,
         "dropdown.listBackground": field,
         "editorWidget.background": field,
-        "editorWidget.border": rule,
+        "editorWidget.border": edge,
         "editorHoverWidget.background": field,
-        "editorHoverWidget.border": rule,
+        "editorHoverWidget.border": edge,
         "editorSuggestWidget.background": field,
-        "editorSuggestWidget.border": rule,
+        "editorSuggestWidget.border": edge,
         "editorSuggestWidget.selectedBackground": selection,
         "editorMarkerNavigation.background": field,
         "quickInput.background": field,
         "menu.background": field,
-        "menu.border": rule,
+        "menu.border": edge,
         "menu.selectionBackground": selection,
         "notifications.background": field,
         "breadcrumbPicker.background": field,
@@ -239,11 +209,15 @@ def chrome(colors: dict[str, str]) -> dict[str, str]:
         "list.activeSelectionForeground": foreground,
         "list.focusBackground": selection,
         "list.focusForeground": foreground,
-        "list.inactiveSelectionBackground": quiet_selection,
+        "list.inactiveSelectionBackground": hover,
         "list.hoverBackground": hover,
         "quickInputList.focusBackground": selection,
 
-        "editorGroup.border": rule,
+        "focusBorder": focus,
+        "textLink.foreground": link,
+        "textLink.activeForeground": focus,
+
+        "editorGroup.border": active_edge,
         "panel.border": rule,
         "terminal.border": rule,
         "sideBarSectionHeader.border": rule,

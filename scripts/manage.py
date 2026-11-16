@@ -23,10 +23,14 @@ GTK4_HOOK_SH = 'lcars-gtk4.sh'
 # rewrites the generated theme with a few distinct fills.
 VSCODE_HOOK_PY = 'lcars-vscode-surfaces.py'
 VSCODE_HOOK_SH = 'lcars-vscode-surfaces.sh'
+# Firefox chrome follows GTK system colors, not the libadwaita palette.
+FIREFOX_HOOK_PY = 'lcars-firefox-chrome.py'
+FIREFOX_HOOK_SH = 'lcars-firefox.sh'
 # (installed helper, theme-set wrapper, path inside this repo)
 PALETTE_HOOKS = (
     (GTK4_HOOK_PY, GTK4_HOOK_SH, 'scripts/gtk4-libadwaita.py'),
     (VSCODE_HOOK_PY, VSCODE_HOOK_SH, 'scripts/vscode-surfaces.py'),
+    (FIREFOX_HOOK_PY, FIREFOX_HOOK_SH, 'scripts/firefox-chrome.py'),
 )
 PALETTE_HOOK_NAMES = {name for hook in PALETTE_HOOKS for name in hook[:2]}
 
@@ -350,7 +354,7 @@ def populate_stage(stage, source, transparency):
     return theme_stage
 
 def stage_palette_hooks(stage, source):
-    """Ship palette hooks. GTK4 ignores gtk-theme, and VS Code chrome is one color."""
+    """Ship palette hooks. GTK4, VS Code, and Firefox ignore the plain theme palette."""
     for helper_name, wrapper_name, relative in PALETTE_HOOKS:
         helper = stage / helper_name
         shutil.copy2(source / relative, helper)
@@ -395,11 +399,24 @@ def apply_gtk4(home=None):
 def apply_vscode(home=None):
     apply_hook(home, VSCODE_HOOK_PY, 'vscode-surfaces.py', ('--no-refresh',) if home is not None else ())
 
+def apply_firefox(home=None):
+    apply_hook(home, FIREFOX_HOOK_PY, 'firefox-chrome.py')
+
+def clear_firefox(home=None):
+    script = ROOT / 'scripts/firefox-chrome.py'
+    if not script.is_file():
+        return
+    cmd = [sys.executable, str(script), '--clear']
+    if home is not None:
+        cmd.extend(['--home', str(home)])
+    subprocess.run(cmd, check=False)
+
 def apply_lcars(theme_only):
     subprocess.run(['omarchy', 'theme', 'set', 'lcars'], check=True)
     # theme-set runs the hooks; call them again so a skipped hook still paints.
     apply_gtk4()
     apply_vscode()
+    apply_firefox()
     if not theme_only:
         subprocess.run(['omarchy', 'restart', 'shell'], check=True)
     subprocess.run(['hyprctl', 'reload'], check=True)
@@ -618,11 +635,13 @@ def uninstall(home, apply=True):
             subprocess.run(['omarchy', 'theme', 'set', record['previous_theme']], check=True)
         subprocess.run([sys.executable, str(ROOT / 'scripts/foot-opacity.py')], check=True)
         clear_gtk4(home)
+        clear_firefox(home)
         subprocess.run(['omarchy', 'restart', 'shell'], check=True)
         subprocess.run(['hyprctl', 'reload'], check=True)
         check_hyprland()
     else:
         clear_gtk4(home)
+        clear_firefox(home)
     record_file.unlink()
     return record
 

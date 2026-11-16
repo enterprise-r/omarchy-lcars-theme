@@ -103,6 +103,10 @@ writes LCARS colors into `~/.config/gtk-4.0/` while LCARS is active and clears
 them when you leave the theme. Reopen or relaunch GTK4 apps after a switch if
 a long-lived daemon does not repaint on its own.
 
+Firefox paints its toolbars from GTK system colors, so the same hook writes a
+managed `userChrome.css` into each Firefox profile. Restart Firefox after a
+theme switch. The sheets are removed when you leave LCARS.
+
 ## Development
 
 ```bash
@@ -113,6 +117,7 @@ python3 scripts/palette.py
 `scripts/palette.py` redraws `assets/palette.png` from `colors.toml`.
 `scripts/gtk4-libadwaita.py` renders the GTK4 / libadwaita palette from
 `colors.toml` (also used by the theme-set hook).
+`scripts/firefox-chrome.py` does the same for Firefox chrome.
 
 The tests use temporary directories and never touch your real desktop. They
 cover install/uninstall, custom widget preservation, restore of an existing
