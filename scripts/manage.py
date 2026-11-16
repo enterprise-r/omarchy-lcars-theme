@@ -19,7 +19,16 @@ RETIRED_HOOKS = {'lcars-vscode-terminal.py', 'lcars-vscode-terminal.sh'}
 # Always shipped with the palette so GTK4/libadwaita apps can follow LCARS.
 GTK4_HOOK_PY = 'lcars-gtk4-libadwaita.py'
 GTK4_HOOK_SH = 'lcars-gtk4.sh'
-GTK4_HOOK_NAMES = {GTK4_HOOK_PY, GTK4_HOOK_SH}
+# Omarchy paints every VS Code surface from one background. This hook
+# rewrites the generated theme with a few distinct fills.
+VSCODE_HOOK_PY = 'lcars-vscode-surfaces.py'
+VSCODE_HOOK_SH = 'lcars-vscode-surfaces.sh'
+# (installed helper, theme-set wrapper, path inside this repo)
+PALETTE_HOOKS = (
+    (GTK4_HOOK_PY, GTK4_HOOK_SH, 'scripts/gtk4-libadwaita.py'),
+    (VSCODE_HOOK_PY, VSCODE_HOOK_SH, 'scripts/vscode-surfaces.py'),
+)
+PALETTE_HOOK_NAMES = {name for hook in PALETTE_HOOKS for name in hook[:2]}
 
 def write_json(path, data):
     # A symlink to a regular file is a versioned dotfile. Replace that file so
@@ -337,26 +346,28 @@ def populate_stage(stage, source, transparency):
         foot_wrapper = stage / 'lcars-foot-opacity.sh'
         foot_wrapper.write_text('#!/bin/bash\nexec python3 "$HOME/.config/omarchy/hooks/lcars-foot-opacity.py"\n')
         foot_wrapper.chmod(0o755)
-    stage_gtk4_hooks(stage, source)
+    stage_palette_hooks(stage, source)
     return theme_stage
 
-def stage_gtk4_hooks(stage, source):
-    """GTK4/libadwaita ignore gtk-theme; ship a palette writer and theme-set hook."""
-    helper = stage / GTK4_HOOK_PY
-    shutil.copy2(source / 'scripts/gtk4-libadwaita.py', helper)
-    helper.chmod(0o755)
-    wrapper = stage / GTK4_HOOK_SH
-    wrapper.write_text(
-        '#!/bin/bash\n'
-        f'exec python3 "$HOME/.config/omarchy/hooks/{GTK4_HOOK_PY}"\n'
-    )
-    wrapper.chmod(0o755)
+def stage_palette_hooks(stage, source):
+    """Ship palette hooks. GTK4 ignores gtk-theme, and VS Code chrome is one color."""
+    for helper_name, wrapper_name, relative in PALETTE_HOOKS:
+        helper = stage / helper_name
+        shutil.copy2(source / relative, helper)
+        helper.chmod(0o755)
+        wrapper = stage / wrapper_name
+        wrapper.write_text(
+            '#!/bin/bash\n'
+            f'exec python3 "$HOME/.config/omarchy/hooks/{helper_name}"\n'
+        )
+        wrapper.chmod(0o755)
 
-def gtk4_hook_targets(config, stage):
-    return [
-        (stage / GTK4_HOOK_PY, config / 'hooks' / GTK4_HOOK_PY),
-        (stage / GTK4_HOOK_SH, config / 'hooks/theme-set.d' / GTK4_HOOK_SH),
-    ]
+def palette_hook_targets(config, stage):
+    targets = []
+    for helper_name, wrapper_name, _relative in PALETTE_HOOKS:
+        targets.append((stage / helper_name, config / 'hooks' / helper_name))
+        targets.append((stage / wrapper_name, config / 'hooks/theme-set.d' / wrapper_name))
+    return targets
 
 def clear_gtk4(home=None):
     script = ROOT / 'scripts/gtk4-libadwaita.py'
@@ -367,21 +378,28 @@ def clear_gtk4(home=None):
         cmd.extend(['--home', str(home)])
     subprocess.run(cmd, check=False)
 
-def apply_gtk4(home=None):
-    script = (home or Path.home()) / '.config/omarchy/hooks' / GTK4_HOOK_PY
+def apply_hook(home, installed_name, repo_name, extra_args=()):
+    script = (home or Path.home()) / '.config/omarchy/hooks' / installed_name
     if not script.is_file():
-        script = ROOT / 'scripts/gtk4-libadwaita.py'
+        script = ROOT / 'scripts' / repo_name
     if not script.is_file():
         return
-    cmd = [sys.executable, str(script)]
+    cmd = [sys.executable, str(script), *extra_args]
     if home is not None:
         cmd.extend(['--home', str(home)])
     subprocess.run(cmd, check=False)
 
+def apply_gtk4(home=None):
+    apply_hook(home, GTK4_HOOK_PY, 'gtk4-libadwaita.py')
+
+def apply_vscode(home=None):
+    apply_hook(home, VSCODE_HOOK_PY, 'vscode-surfaces.py', ('--no-refresh',) if home is not None else ())
+
 def apply_lcars(theme_only):
     subprocess.run(['omarchy', 'theme', 'set', 'lcars'], check=True)
-    # theme-set runs the hook; call it again so --no-hook races still paint GTK4.
+    # theme-set runs the hooks; call them again so a skipped hook still paints.
     apply_gtk4()
+    apply_vscode()
     if not theme_only:
         subprocess.run(['omarchy', 'restart', 'shell'], check=True)
     subprocess.run(['hyprctl', 'reload'], check=True)
@@ -398,7 +416,7 @@ def managed_source(target, theme_stage, source, stage):
             return None
         return plugin
     staged = stage / target.name
-    if target.name in ['lcars-foot-opacity.py', 'lcars-foot-opacity.sh', GTK4_HOOK_PY, GTK4_HOOK_SH] and staged.exists():
+    if target.name in ['lcars-foot-opacity.py', 'lcars-foot-opacity.sh', *PALETTE_HOOK_NAMES] and staged.exists():
         return staged
     raise RuntimeError('No source for managed path: ' + str(target))
 
@@ -436,7 +454,7 @@ def install(home, source=ROOT, theme_only=False, transparency=True, apply=True, 
         if transparency:
             targets.append((stage / 'lcars-foot-opacity.py', config / 'hooks/lcars-foot-opacity.py'))
             targets.append((stage / 'lcars-foot-opacity.sh', config / 'hooks/theme-set.d/lcars-foot-opacity.sh'))
-        targets.extend(gtk4_hook_targets(config, stage))
+        targets.extend(palette_hook_targets(config, stage))
         for _, target in targets:
             if target.is_symlink():
                 raise RuntimeError('Refusing to replace symlink: ' + str(target))
@@ -507,7 +525,7 @@ def refresh(home, source, apply):
         checked = []
         sources = []
         existing_paths = {entry['path'] for entry in record['targets']}
-        for src, target in gtk4_hook_targets(config, stage):
+        for src, target in palette_hook_targets(config, stage):
             if str(target) not in existing_paths:
                 record['targets'].append({'path': str(target), 'saved': None, 'digest': None})
                 existing_paths.add(str(target))

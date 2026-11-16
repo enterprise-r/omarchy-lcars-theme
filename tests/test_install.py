@@ -47,6 +47,7 @@ class Installation(unittest.TestCase):
         shutil.copytree(ROOT/'plugins', source/'plugins')
         shutil.copy2(ROOT/'scripts'/'foot-opacity.py', source/'scripts'/'foot-opacity.py')
         shutil.copy2(ROOT/'scripts'/'gtk4-libadwaita.py', source/'scripts'/'gtk4-libadwaita.py')
+        shutil.copy2(ROOT/'scripts'/'vscode-surfaces.py', source/'scripts'/'vscode-surfaces.py')
         return source
     def assert_gtk4_hooks(self):
         hook = self.home/'.config/omarchy/hooks/theme-set.d/lcars-gtk4.sh'
@@ -54,12 +55,21 @@ class Installation(unittest.TestCase):
         self.assertTrue(helper.is_file())
         self.assertIn('lcars-gtk4-libadwaita.py', hook.read_text())
         self.assertTrue(hook.is_file())
+    def assert_vscode_hooks(self):
+        hook = self.home/'.config/omarchy/hooks/theme-set.d/lcars-vscode-surfaces.sh'
+        helper = self.home/'.config/omarchy/hooks/lcars-vscode-surfaces.py'
+        self.assertTrue(helper.is_file())
+        self.assertIn('lcars-vscode-surfaces.py', hook.read_text())
+        self.assertTrue(hook.is_file())
     def test_gtk4_hooks_install_with_theme_only(self):
         self.install(theme_only=True)
         self.assert_gtk4_hooks()
+        self.assert_vscode_hooks()
         m.uninstall(self.home, apply=False)
         self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-gtk4.sh').exists())
         self.assertFalse((self.home/'.config/omarchy/hooks/lcars-gtk4-libadwaita.py').exists())
+        self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-vscode-surfaces.sh').exists())
+        self.assertFalse((self.home/'.config/omarchy/hooks/lcars-vscode-surfaces.py').exists())
     def test_reinstall_adds_gtk4_hooks_to_old_record(self):
         source = self.source_copy()
         self.install(source=source)
@@ -75,9 +85,12 @@ class Installation(unittest.TestCase):
         record_path.write_text(json.dumps(record))
         self.install(source=source, reinstall=True)
         self.assert_gtk4_hooks()
+        self.assert_vscode_hooks()
         saved = json.loads(record_path.read_text())
         self.assertTrue(any(entry['path'].endswith('lcars-gtk4-libadwaita.py') for entry in saved['targets']))
         self.assertTrue(any(entry['path'].endswith('lcars-gtk4.sh') for entry in saved['targets']))
+        self.assertTrue(any(entry['path'].endswith('lcars-vscode-surfaces.py') for entry in saved['targets']))
+        self.assertTrue(any(entry['path'].endswith('lcars-vscode-surfaces.sh') for entry in saved['targets']))
     def test_reinstall_copies_plugins_missing_from_old_record(self):
         source = self.source_copy()
         self.install(source=source)
@@ -139,6 +152,65 @@ class Installation(unittest.TestCase):
         self.assertEqual(g.apply(home, clear=True), 0)
         self.assertEqual((home/'.config/gtk-4.0/gtk.css').read_text(), '/* mine */\nwindow { opacity: 1; }\n')
         self.assertFalse((home/'.config/gtk-4.0/omarchy-lcars.css').exists())
+    def test_vscode_surface_ramp(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('vscode', ROOT/'scripts'/'vscode-surfaces.py')
+        v = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(v)
+        colors = v.load_colors(ROOT/'colors.toml')
+        role = v.surfaces(colors)
+        panes = [role['editor'], role['panel'], role['sidebar'], role['frame'], role['field']]
+        self.assertEqual(len(set(panes)), len(panes))
+        self.assertEqual(panes, sorted(panes, key=v.luma))
+        for surface in panes:
+            self.assertGreaterEqual(v.contrast(surface, colors['foreground']), 4.5)
+        self.assertGreaterEqual(v.contrast(role['frame'], colors['accent']), 4.5)
+        self.assertGreaterEqual(v.contrast(role['sidebar'], colors['muted']), 4.5)
+        self.assertEqual(role['editor'], '#0c040f')
+        self.assertEqual(role['sidebar'], '#181820')
+        # The code well stays far darker than the sidebar, as in Catppuccin's
+        # crust-to-base gap, so the editor does not blend into the file tree.
+        self.assertGreater(v.luma(role['sidebar']) - v.luma(role['editor']), 12)
+        workbench = v.chrome(colors)
+        self.assertNotEqual(workbench['editor.background'], workbench['sideBar.background'])
+        self.assertNotEqual(workbench['sideBar.background'], workbench['activityBar.background'])
+        self.assertNotEqual(workbench['editor.background'], workbench['panel.background'])
+        self.assertNotEqual(workbench['tab.activeBackground'], workbench['tab.inactiveBackground'])
+        self.assertEqual(workbench['tab.activeBackground'], workbench['editor.background'])
+        self.assertEqual(workbench['activityBar.foreground'], colors['accent'])
+        home = self.home
+        state = home/'.local/state/omarchy/current'
+        state.mkdir(parents=True, exist_ok=True)
+        (state/'theme.name').write_text('lcars\n')
+        theme = state/'theme'
+        theme.mkdir()
+        shutil.copy2(ROOT/'colors.toml', theme/'colors.toml')
+        (theme/'vscode-theme.json').write_text(json.dumps({
+            'name': 'Omarchy',
+            'colors': {
+                'editor.background': '#0c040f',
+                'sideBar.background': '#0c040f',
+                'activityBar.background': '#0c040f',
+                'panel.background': '#0c040f',
+                'tab.activeBackground': '#0c040f',
+                'tab.inactiveBackground': '#0c040f',
+            },
+            'tokenColors': [{'name': 'Comment'}],
+        }))
+        self.assertEqual(v.apply(home, refresh=False), 0)
+        patched = json.loads((theme/'vscode-theme.json').read_text())
+        self.assertEqual(patched['tokenColors'], [{'name': 'Comment'}])
+        self.assertEqual(patched['colors']['editor.background'], '#0c040f')
+        self.assertEqual(patched['colors']['sideBar.background'], role['sidebar'])
+        self.assertEqual(patched['colors']['activityBar.background'], role['frame'])
+        self.assertEqual(patched['colors']['panel.background'], role['panel'])
+        self.assertEqual(patched['colors']['tab.inactiveBackground'], role['sidebar'])
+        self.assertNotEqual(patched['colors']['list.activeSelectionBackground'], patched['colors']['sideBar.background'])
+        self.assertEqual(v.apply(home, refresh=False), 0)
+        (state/'theme.name').write_text('nord\n')
+        (theme/'vscode-theme.json').write_text(json.dumps({'colors': {'editor.background': '#111111'}}))
+        self.assertEqual(v.apply(home, refresh=False), 0)
+        self.assertEqual(json.loads((theme/'vscode-theme.json').read_text())['colors']['editor.background'], '#111111')
     def test_round_trip_preserves_unrelated_changes(self):
         self.install()
         self.assert_gtk4_hooks()
@@ -156,6 +228,7 @@ class Installation(unittest.TestCase):
         self.assertNotIn('centerAnchor', d['bar'])
         self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-vscode-terminal.sh').exists())
         self.assertFalse((self.home/'.config/omarchy/hooks/lcars-vscode-terminal.py').exists())
+        self.assert_vscode_hooks()
         foot_hook = self.home/'.config/omarchy/hooks/theme-set.d/lcars-foot-opacity.sh'
         self.assertIn('lcars-foot-opacity.py', foot_hook.read_text())
         self.assertTrue((self.home/'.config/omarchy/hooks/lcars-foot-opacity.py').is_file())
@@ -177,6 +250,8 @@ class Installation(unittest.TestCase):
         self.assertFalse((self.home/'.config/omarchy/hooks/lcars-foot-opacity.py').exists())
         self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-gtk4.sh').exists())
         self.assertFalse((self.home/'.config/omarchy/hooks/lcars-gtk4-libadwaita.py').exists())
+        self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-vscode-surfaces.sh').exists())
+        self.assertFalse((self.home/'.config/omarchy/hooks/lcars-vscode-surfaces.py').exists())
     def test_center_group_stays_beside_the_workspaces(self):
         d = copy.deepcopy(BASE)
         d['bar']['layout']['centerBegin'] = [{'id': 'personal.before'}]
