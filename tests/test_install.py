@@ -144,13 +144,16 @@ class Installation(unittest.TestCase):
         self.assert_gtk4_hooks()
         d = json.loads(self.shell.read_text())
         # keep the rest of the original test body by re-reading below marker if needed
-        self.assertEqual(d['bar']['layout']['center'][0]['format'], 'HH:mm')
+        clock = next(x for x in d['bar']['layout']['left'] if x['id'] == 'lcars.clock')
+        self.assertEqual(clock['format'], 'HH:mm')
         ids = [x['id'] for x in d['bar']['layout']['right']]
         self.assertIn('lcars.plate', ids)
         self.assertNotIn('lcars.band', ids)
         self.assertEqual(d['idle'], BASE['idle'])
         self.assertEqual(d['plugins'], BASE['plugins'])
-        self.assertEqual(d['bar']['layout']['center'][0]['timezone'], 'Europe/Zurich')
+        self.assertEqual(clock['timezone'], 'Europe/Zurich')
+        self.assertEqual(d['bar']['layout']['center'][0]['id'], 'lcars.workspaces')
+        self.assertNotIn('centerAnchor', d['bar'])
         self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-vscode-terminal.sh').exists())
         self.assertFalse((self.home/'.config/omarchy/hooks/lcars-vscode-terminal.py').exists())
         foot_hook = self.home/'.config/omarchy/hooks/theme-set.d/lcars-foot-opacity.sh'
@@ -159,7 +162,7 @@ class Installation(unittest.TestCase):
         self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-foot-opacity.py').exists())
         d['idle']['lock'] = 900
         d['bar']['layout']['right'].append({'id': 'new.widget'})
-        d['bar']['layout']['center'][0]['timezone'] = 'UTC'
+        clock['timezone'] = 'UTC'
         m.write_json(self.shell, d)
         m.uninstall(self.home, apply=False)
         d = json.loads(self.shell.read_text())
@@ -174,6 +177,35 @@ class Installation(unittest.TestCase):
         self.assertFalse((self.home/'.config/omarchy/hooks/lcars-foot-opacity.py').exists())
         self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-gtk4.sh').exists())
         self.assertFalse((self.home/'.config/omarchy/hooks/lcars-gtk4-libadwaita.py').exists())
+    def test_center_group_stays_beside_the_workspaces(self):
+        d = copy.deepcopy(BASE)
+        d['bar']['layout']['centerBegin'] = [{'id': 'personal.before'}]
+        d['bar']['layout']['center'] = [
+            {'id': 'omarchy.indicators'},
+            {'id': 'omarchy.clock', 'format': 'HH:mm', 'timezone': 'Europe/Zurich'},
+            {'id': 'omarchy.elsewhen'},
+        ]
+        d['bar']['layout']['centerEnd'] = [{'id': 'personal.after'}]
+        m.write_json(self.shell, d)
+        self.install()
+        laid = json.loads(self.shell.read_text())['bar']['layout']
+        self.assertEqual([x['id'] for x in laid['centerBegin']], ['personal.before', 'lcars.indicators'])
+        self.assertEqual([x['id'] for x in laid['center']], ['lcars.workspaces'])
+        self.assertEqual([x['id'] for x in laid['centerEnd']], ['omarchy.elsewhen', 'personal.after'])
+        self.assertEqual(laid['left'][1]['id'], 'lcars.clock')
+        self.assertEqual(laid['left'][1]['format'], 'HH:mm')
+        current = json.loads(self.shell.read_text())
+        current['bar']['layout']['centerEnd'].append({'id': 'new.widget'})
+        m.write_json(self.shell, current)
+        m.uninstall(self.home, apply=False)
+        restored = json.loads(self.shell.read_text())
+        layout = restored['bar']['layout']
+        self.assertEqual([x['id'] for x in layout['center']], ['omarchy.indicators', 'omarchy.clock', 'omarchy.elsewhen'])
+        self.assertEqual(layout['center'][1]['timezone'], 'Europe/Zurich')
+        self.assertEqual([x['id'] for x in layout['left']], ['omarchy.menu', 'omarchy.workspaces', 'personal.chat'])
+        self.assertEqual(layout['centerEnd'][-1]['id'], 'new.widget')
+        self.assertEqual([x['id'] for x in layout['centerBegin']], ['personal.before'])
+        self.assertEqual(restored['bar']['centerAnchor'], 'omarchy.clock')
     def test_custom_clones_are_preserved(self):
         d = copy.deepcopy(BASE)
         d['bar']['layout']['center'][0]['id'] = 'custom.clock'
@@ -393,7 +425,8 @@ class Installation(unittest.TestCase):
         link = self.shell.readlink()
         self.install()
         self.assertEqual(self.shell.readlink(), link)
-        self.assertEqual(json.loads(versioned.read_text())['bar']['layout']['center'][0]['id'], 'lcars.clock')
+        self.assertEqual(json.loads(versioned.read_text())['bar']['layout']['center'][0]['id'], 'lcars.workspaces')
+        self.assertEqual(json.loads(versioned.read_text())['bar']['layout']['left'][1]['id'], 'lcars.clock')
         self.assertFalse((versioned.parent/'shell.json.lcars-tmp').exists())
         m.uninstall(self.home, apply=False)
         self.assertEqual(self.shell.readlink(), link)

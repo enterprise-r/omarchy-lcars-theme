@@ -141,7 +141,7 @@ BarWidget {
         readonly property real thickness: 0.8 + depth * 0.55
         readonly property color headColor: index % 4 === 0 ? "#cedceb" : "#e4eafa"
         readonly property color tailColor: index % 7 === 0 ? "#ba7c79" : "#929dbf"
-        // The true vanishing point sits at the centered STARDATE clock.
+        // The trails converge on the middle of the bar.
         x: field.width / 2 + rayX * depth
         y: field.height / 2 + rayY * depth
         rotation: Math.atan2(rayY, rayX) * 180 / Math.PI

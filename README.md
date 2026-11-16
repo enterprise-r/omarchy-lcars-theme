@@ -28,9 +28,10 @@ cd omarchy-lcars-theme
 
 Run as your normal desktop user. The installer applies the theme, replaces
 standard bar widgets with styled copies, and adds the full-width warp effect.
-**Existing custom widgets, shortcuts, and workspace arrangements stay yours.**
-Custom replacements of standard widgets are kept, rather than overridden, so
-your bar may differ from the screenshots.
+**Existing custom widgets and shortcuts stay yours.** LCARS puts the calendar
+where the workspace indicator was and centers the workspace indicator. A custom
+replacement of either widget is left where you put it, so your bar may differ
+from the screenshots.
 
 Built-in menu, calendar, workspace switching, network, audio, brightness, and
 battery actions remain functional. LCARS adds no network service and no audio.

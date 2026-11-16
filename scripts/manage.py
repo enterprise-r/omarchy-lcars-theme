@@ -133,6 +133,112 @@ def theme_uses_transparency(config):
                 return True
     return True
 
+CLUSTER = ('centerBegin', 'center', 'centerEnd')
+
+def find_entry(layout, widget_id):
+    for section, entries in layout.items():
+        if not isinstance(entries, list):
+            continue
+        for index, entry in enumerate(entries):
+            if isinstance(entry, dict) and entry.get('id') == widget_id:
+                return section, index
+    return None, None
+
+def exchange(layout, left_id, right_id):
+    left = find_entry(layout, left_id)
+    right = find_entry(layout, right_id)
+    if left[0] is None or right[0] is None or left == right:
+        return False
+    # The right-hand side is evaluated first, so this is safe in one section.
+    layout[left[0]][left[1]], layout[right[0]][right[1]] = layout[right[0]][right[1]], layout[left[0]][left[1]]
+    return True
+
+def cluster_ids(layout):
+    found = {}
+    for name in CLUSTER:
+        entries = layout.get(name)
+        if not isinstance(entries, list):
+            found[name] = []
+            continue
+        found[name] = [entry.get('id') for entry in entries if isinstance(entry, dict)]
+    return found
+
+def pin_workspaces(layout):
+    """Keep the workspace indicator as the only widget in the center box.
+
+    Buttons that share that box slide it when they grow. Neighbors hang off
+    the side they were already on, which is where the bar lets them grow.
+    """
+    section, index = find_entry(layout, 'lcars.workspaces')
+    if section not in CLUSTER:
+        return False
+    entries = list(layout.get(section) or [])
+    if section == 'center' and len(entries) == 1:
+        return False
+    before = entries[:index]
+    widget = entries[index]
+    after = entries[index + 1:]
+    begin = list(layout.get('centerBegin') or [])
+    center = list(layout.get('center') or [])
+    end = list(layout.get('centerEnd') or [])
+    if section == 'center':
+        begin = begin + before
+        center = [widget]
+        end = after + end
+    elif section == 'centerBegin':
+        begin = before
+        end = after + center + end
+        center = [widget]
+    else:
+        begin = begin + center + before
+        center = [widget]
+        end = after
+    layout['centerBegin'] = begin
+    layout['center'] = center
+    layout['centerEnd'] = end
+    return True
+
+def restore_cluster(layout, before_ids):
+    wanted = []
+    for name in CLUSTER:
+        for widget_id in before_ids.get(name, []):
+            wanted.append((name, widget_id))
+    wanted_ids = {widget_id for _, widget_id in wanted}
+    found = {}
+    leftover = {name: [] for name in CLUSTER}
+    for name in CLUSTER:
+        for entry in list(layout.get(name) or []):
+            widget_id = entry.get('id') if isinstance(entry, dict) else None
+            if widget_id in wanted_ids and widget_id not in found:
+                found[widget_id] = entry
+            else:
+                leftover[name].append(entry)
+    for name in CLUSTER:
+        layout[name] = [found[widget_id] for widget_id in before_ids.get(name, []) if widget_id in found]
+        layout[name].extend(leftover[name])
+
+def place_calendar_and_workspaces(bar):
+    """Trade the calendar with the workspace indicator, then center the workspaces.
+
+    A custom replacement of either widget is left where it is. The returned
+    record is what uninstall reverses.
+    """
+    placement = {'swapped': False, 'pinned': False, 'cluster': None, 'cleared_center_anchor': False}
+    layout = bar['layout']
+    if find_entry(layout, 'lcars.clock')[0] is None or find_entry(layout, 'lcars.workspaces')[0] is None:
+        return placement
+    if not exchange(layout, 'lcars.clock', 'lcars.workspaces'):
+        return placement
+    placement['swapped'] = True
+    placement['cluster'] = cluster_ids(layout)
+    placement['pinned'] = pin_workspaces(layout)
+    if bar.get('centerAnchor') in ('lcars.clock', 'omarchy.clock'):
+        # The center section is the pin. A leftover clock anchor would follow
+        # the calendar after it leaves the middle.
+        bar.pop('centerAnchor', None)
+        placement['cleared_center_anchor'] = True
+    return placement
+
 def patch_shell(original):
     d = copy.deepcopy(original)
     if d.get('version') != 1 or not isinstance(d.get('bar', {}).get('layout'), dict):
@@ -151,6 +257,7 @@ def patch_shell(original):
     anchor = d['bar'].get('centerAnchor')
     if anchor == 'omarchy.clock' and 'lcars.clock' in changed:
         d['bar']['centerAnchor'] = 'lcars.clock'
+    placement = place_calendar_and_workspaces(d['bar'])
     # Stars stay in the layout and start hidden. A right-click on the bar shows them.
     left = d['bar']['layout'].setdefault('left', [])
     if not any(entry.get('id') == 'lcars.stars' for entry in left):
@@ -158,11 +265,18 @@ def patch_shell(original):
     right = d['bar']['layout'].setdefault('right', [])
     right.append({'id': 'lcars.plate'})
     # Menu actions still route to the native menu; the clone only styles its bar entry.
-    return d, changed
+    return d, changed, placement
 
 def unpatch_shell(current, record):
     d = copy.deepcopy(current)
-    for section, entries in d.get('bar', {}).get('layout', {}).items():
+    layout = d.get('bar', {}).get('layout', {})
+    placement = record.get('bar_place') or {}
+    # Reverse the pin before the swap, so each entry keeps edits made after install.
+    if placement.get('pinned') and placement.get('cluster'):
+        restore_cluster(layout, placement['cluster'])
+    if placement.get('swapped'):
+        exchange(layout, 'lcars.clock', 'lcars.workspaces')
+    for section, entries in layout.items():
         result = []
         for entry in entries:
             target = entry.get('id')
@@ -179,9 +293,20 @@ def unpatch_shell(current, record):
                     else:
                         entry.pop('format', None)
             result.append(entry)
-        d['bar']['layout'][section] = result
-    if d.get('bar', {}).get('centerAnchor') == 'lcars.clock':
-        d['bar']['centerAnchor'] = record['before_shell']['bar'].get('centerAnchor', '')
+        layout[section] = result
+    before_bar = record.get('before_shell', {}).get('bar', {})
+    if placement.get('cleared_center_anchor'):
+        previous = before_bar.get('centerAnchor')
+        if previous:
+            d['bar']['centerAnchor'] = previous
+        else:
+            d['bar'].pop('centerAnchor', None)
+    elif d.get('bar', {}).get('centerAnchor') == 'lcars.clock':
+        d['bar']['centerAnchor'] = before_bar.get('centerAnchor', '')
+    before_layout = before_bar.get('layout', {})
+    for name in CLUSTER:
+        if name not in before_layout and not layout.get(name):
+            layout.pop(name, None)
     return d
 
 def check_hyprland():
@@ -293,7 +418,7 @@ def install(home, source=ROOT, theme_only=False, transparency=True, apply=True, 
     before = json.loads(shell_file.read_text()) if shell_file.exists() else None
     if not theme_only and before is None:
         raise RuntimeError('No existing shell.json. Start Omarchy once before installing widgets.')
-    after, replaced = (before, {}) if theme_only else patch_shell(before)
+    after, replaced, placement = (before, {}, {}) if theme_only else patch_shell(before)
     previous = home / '.local/state/omarchy/current/theme.name'
     previous_theme = previous.read_text().strip() if previous.exists() else ''
     if apply and not previous_theme:
@@ -321,7 +446,7 @@ def install(home, source=ROOT, theme_only=False, transparency=True, apply=True, 
         if not theme_only and shell_file.is_symlink() and not Path(os.path.realpath(shell_file)).is_file():
             raise RuntimeError('Refusing to replace a symlinked shell.json.')
         backup.mkdir(parents=True)
-        record = {'version': 1, 'previous_theme': previous_theme, 'before_shell': before, 'replaced': replaced, 'theme_only': theme_only, 'backup': str(backup), 'targets': []}
+        record = {'version': 1, 'previous_theme': previous_theme, 'before_shell': before, 'replaced': replaced, 'bar_place': placement, 'theme_only': theme_only, 'backup': str(backup), 'targets': []}
         if before is not None:
             write_json(backup / 'shell.json', before)
         try:
