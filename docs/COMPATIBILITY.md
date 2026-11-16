@@ -26,8 +26,9 @@ trails across the desktop. Future changes to that scene hierarchy or the
 plugin interfaces may require an update. The normal theme-color check
 disables the effect with other palettes.
 
-Screenshots and the animated bar are captures of the actual running packaged
-widgets on a clean demo workspace; terminal content is illustrative.
+`assets/about.jpg` and `assets/editor.png` are a working Omarchy 4.5 desktop.
+`assets/desktop.png` and the animated bar are captures of the packaged widgets
+on a demo workspace; the terminal text there is illustrative.
 
 The wallpaper was generated for this project with the built-in OpenAI image
 generation tool. Its prompt is in `wallpaper-prompt.txt`. The repository includes

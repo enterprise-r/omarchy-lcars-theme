@@ -2,23 +2,49 @@
 
 **A quiet view at warp.**
 
-A complete Star Trek–inspired desktop for Omarchy: orange and lavender panels,
-readable dark terminals, and a starfield that travels
-outward behind the entire bar. The stars begin as distant points and stretch
-into icy-white trails as they approach the edges.
+Orange and lavender panels, a dark desk you can read all day, and a starfield
+that travels outward behind the bar. Stars begin as distant points and stretch
+into icy-white trails as they reach the edges.
 
-![LCARS desktop](assets/desktop.png)
+## The desk
+
+Wallpaper, bar, and a fastfetch window on Omarchy 4.5. The trails sit behind
+the controls. Right-click an empty stretch of the bar to show or hide them.
+
+![LCARS desktop: warp wallpaper, fastfetch, and the bar](assets/about.jpg)
+
+The same colors in a normal working layout. The browser and VS Code share the
+palette. The editor well stays on the deep background. Sidebars, panels, and
+the frame use the lighter surface. The active tab is green.
+
+![Browser and VS Code on the LCARS palette](assets/editor.png)
+
+The bar on its own:
 
 ![Animated LCARS bar](assets/warp-bar.gif)
 
+Terminals on the wallpaper. The text in this shot is a demo.
+
+![LCARS terminals](assets/desktop.png)
+
 ![LCARS palette](assets/palette.png)
+
+## What you get
+
+- Hyprland borders, the warp wallpaper, and terminal colors for Alacritty, Kitty, Ghostty, and Foot
+- A Quickshell bar with LCARS plates, a centered workspace indicator, and the starfield painted behind the controls
+- GTK 3, GTK 4 / libadwaita, Firefox chrome, and a VS Code surface split, written while LCARS is active and cleared when you leave it
+
+Menu, calendar, workspace switching, network, audio, brightness, and battery
+keep working. LCARS adds no network service and no audio. The clock keeps the
+label already in your shell configuration.
 
 ## Install the complete experience
 
 Requires **Omarchy 4 / Quattro with the Quickshell shell**, a top or bottom bar,
-Python 3.11+, and Git. Tested on `4.0.0.alpha`; this is an early community
-release, and future shell API changes may require updates. It does not replace
-Waybar on Omarchy 3.
+Python 3.11+, and Git. The screenshots above are Omarchy 4.5. This is an early
+community release, and future shell API changes may require updates. It does
+not replace Waybar on Omarchy 3.
 
 ```bash
 git clone https://github.com/yzingher/omarchy-lcars-theme.git
@@ -32,10 +58,6 @@ standard bar widgets with styled copies, and adds the full-width warp effect.
 where the workspace indicator was and centers the workspace indicator. A custom
 replacement of either widget is left where you put it, so your bar may differ
 from the screenshots.
-
-Built-in menu, calendar, workspace switching, network, audio, brightness, and
-battery actions remain functional. LCARS adds no network service and no audio.
-The clock keeps the label already in your shell configuration.
 
 ## Choose your level of immersion
 
@@ -94,6 +116,8 @@ animation independent of the monitor's full refresh rate. It runs only while
 the trails are shown on a visible bar, and it stops when they are hidden, the
 bar is parked off-screen, or the LCARS palette is inactive.
 
+## How applications pick up the colors
+
 The shared theme colors style application interiors according to each app's
 support. This does not inject fictional title bars into editors or websites.
 
@@ -107,6 +131,14 @@ Firefox paints its toolbars from GTK system colors, so the same hook writes a
 managed `userChrome.css` into each Firefox profile. Restart Firefox after a
 theme switch. The sheets are removed when you leave LCARS.
 
+Omarchy's generated VS Code theme paints the activity bar, sidebar, editor,
+panel, and title bar with one background. A theme-set hook keeps the code well
+on the deep background and lifts sidebars, panels, inputs, and the frame onto
+the lighter surface. The current tab and the activity icon use green. Amber is
+hover only. The hook reloads VS Code, Cursor, and Codium through
+`omarchy-theme-set-vscode`. It writes the split only while LCARS is the
+active theme.
+
 ## Development
 
 ```bash
@@ -118,6 +150,7 @@ python3 scripts/palette.py
 `scripts/gtk4-libadwaita.py` renders the GTK4 / libadwaita palette from
 `colors.toml` (also used by the theme-set hook).
 `scripts/firefox-chrome.py` does the same for Firefox chrome.
+`scripts/vscode-surfaces.py` writes the editor surface split.
 
 The tests use temporary directories and never touch your real desktop. They
 cover install/uninstall, custom widget preservation, restore of an existing
