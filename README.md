@@ -128,8 +128,9 @@ them when you leave the theme. Reopen or relaunch GTK4 apps after a switch if
 a long-lived daemon does not repaint on its own.
 
 Firefox paints its toolbars from GTK system colors, so the same hook writes a
-managed `userChrome.css` into each Firefox profile. Restart Firefox after a
-theme switch. The sheets are removed when you leave LCARS.
+managed `userChrome.css` into each Firefox profile. The sheet sets the named
+palette only: page background, the amber accent, and clear icon buttons.
+Restart Firefox after a theme switch. The sheets are removed when you leave LCARS.
 
 Omarchy's generated VS Code theme paints the activity bar, sidebar, editor,
 panel, and title bar with one background. A theme-set hook keeps the code well

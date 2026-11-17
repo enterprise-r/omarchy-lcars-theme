@@ -113,29 +113,29 @@ class Installation(unittest.TestCase):
         g = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(g)
         css = g.build_css(g.load_colors(ROOT/'colors.toml'))
-        self.assertIn('@define-color accent_bg_color #77af8a;', css)
+        self.assertIn('@define-color accent_bg_color #f0A202;', css)
         self.assertIn('@define-color accent_color #f0A202;', css)
         self.assertIn('--window-bg-color: #0c040f;', css)
         self.assertIn('--view-bg-color: #0c040f;', css)
         self.assertIn('--accent-fg-color: #0c040f;', css)
-        # Standalone accent stays amber. Suggested actions use green.
+        # Accent is the palette accent. No extra widget rules.
         self.assertIn('--accent-color: #f0A202;', css)
-        self.assertIn('--accent-bg-color: #77af8a;', css)
+        self.assertIn('--accent-bg-color: #f0A202;', css)
         self.assertNotIn('oklab(', css)
         self.assertIn('--headerbar-bg-color: #181820;', css)
         self.assertIn('--card-bg-color: #181820;', css)
         self.assertIn('--sidebar-bg-color: #181820;', css)
         self.assertIn('--popover-bg-color: #181820;', css)
-        self.assertIn('--headerbar-border-color: #3f2c53;', css)
-        self.assertIn('--warning-bg-color: #f0A202;', css)
+        self.assertIn('--headerbar-border-color: #f0A202;', css)
+        self.assertIn('--warning-bg-color: #e4d58b;', css)
+        self.assertIn('--success-bg-color: #77af8a;', css)
         self.assertIn('@define-color theme_selected_bg_color #41285b;', css)
-        self.assertIn('@define-color link_color #d2bced;', css)
-        self.assertIn('@define-color borders #9385a5;', css)
-        self.assertIn('background-color: #41285b;', css)
-        self.assertIn('outline-color: #fff3e6 !important;', css)
-        self.assertIn('--headerbar-border-color: #ba9eda;', css)
+        self.assertIn('@define-color link_color #f0A202;', css)
+        self.assertIn('@define-color borders #f0A202;', css)
+        self.assertNotIn('outline-color: #', css)
+        self.assertNotIn('row:selected', css)
         self.assertNotIn('#a5ace1', css)
-        self.assertNotIn('#e4d58b', css)
+        self.assertIn('@define-color insensitive_fg_color #9385a5;', css)
         home = self.home
         (home/'.local/state/omarchy/current').mkdir(parents=True, exist_ok=True)
         (home/'.local/state/omarchy/current/theme.name').write_text('lcars\n')
@@ -243,13 +243,15 @@ class Installation(unittest.TestCase):
         f = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(f)
         css = f.build_chrome(f.load_colors(ROOT/'colors.toml'))
-        self.assertIn('--toolbar-background-color: #181820;', css)
-        self.assertIn('--tab-background-color-selected: #0c040f;', css)
-        self.assertIn('--tab-text-color-selected: #77af8a;', css)
-        self.assertIn('--color-accent-primary: #77af8a;', css)
-        self.assertIn('--link-color: #d2bced;', css)
+        self.assertIn('--toolbar-background-color: #0c040f;', css)
+        self.assertIn('--color-accent-primary: #f0A202;', css)
+        self.assertIn('--link-color: #f0A202;', css)
+        self.assertIn('--button-background-color: transparent;', css)
         self.assertIn('--urlbarview-background-color-selected: #41285b;', css)
-        self.assertIn('background-color: #181820 !important;', css)
+        self.assertIn('--panel-background-color: #181820;', css)
+        self.assertNotIn('!important', css)
+        self.assertNotIn('.tab-background', css)
+        self.assertNotIn('#77af8a', css)
         self.assertNotIn('#a5ace1', css)
         home = self.home
         state = home/'.local/state/omarchy/current'
@@ -258,10 +260,13 @@ class Installation(unittest.TestCase):
         theme = state/'theme'
         theme.mkdir()
         shutil.copy2(ROOT/'colors.toml', theme/'colors.toml')
-        profile = home/'.mozilla/firefox/abc.default-release'
+        profile = home/'.config/mozilla/firefox/abc.default-release'
         profile.mkdir(parents=True)
-        (home/'.mozilla/firefox/profiles.ini').write_text(
-            '[Profile0]\nName=default\nIsRelative=1\nPath=abc.default-release\n'
+        webapp = home/'.config/mozilla/firefox/web.WebApps'
+        webapp.mkdir()
+        (home/'.config/mozilla/firefox/profiles.ini').write_text(
+            '[Profile0]\nName=default-release\nIsRelative=1\nPath=abc.default-release\n'
+            '\n[Profile1]\nName=WebApps\nIsRelative=1\nPath=web.WebApps\n'
         )
         (profile/'chrome').mkdir()
         (profile/'chrome/userChrome.css').write_text('/* mine */\n#urlbar { opacity: 1; }\n')
@@ -271,8 +276,10 @@ class Installation(unittest.TestCase):
         self.assertIn('/* mine */', chrome)
         self.assertIn('omarchy-lcars.css', chrome)
         sheet = (profile/'chrome/omarchy-lcars.css').read_text()
-        self.assertIn('#77af8a', sheet)
-        self.assertIn('#181820', sheet)
+        self.assertIn('#f0A202', sheet)
+        self.assertIn('#0c040f', sheet)
+        self.assertNotIn('#77af8a', sheet)
+        self.assertFalse((webapp/'chrome/omarchy-lcars.css').exists())
         prefs = (profile/'user.js').read_text()
         self.assertIn('toolkit.legacyUserProfileCustomizations.stylesheets', prefs)
         self.assertIn('browser.startup.page', prefs)

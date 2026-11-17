@@ -130,28 +130,20 @@ def build_css(colors: dict[str, str]) -> str:
     accent = colors["accent"]
     red = colors["red"]
     green = colors["green"]
-    # Named surfaces from the shared palette. The page and text views stay on
-    # background. Cards, sidebars, header bars, and popovers use the card.
-    # Idle rules are the inactive border. Amber is accent ink and warning,
-    # not the suggested-action fill.
+    yellow = colors["yellow"]
+    # Two named surfaces and the palette accent. No extra widget rules.
     card = colors.get("lighter_background", bg)
-    idle = colors.get("hyprland_inactive_border", colors.get("selection", card))
-    visible = colors.get("dark_foreground", fg)
-    active = colors.get("magenta") or colors.get("hyprland_active_border") or accent
-    focus = colors.get("bright_foreground", fg)
-    selection = colors.get("selection", idle)
-    link = colors.get("bright_magenta", active)
+    selection = colors.get("selection", card)
     dim = colors.get("dark_foreground", fg)
 
-    accent_ink = accent
     red_ink = ink(red, bg, colors.get("bright_red"))
     green_ink = ink(green, bg, colors.get("bright_green"))
-    warning_ink = accent
+    yellow_ink = ink(yellow, bg, colors.get("bright_yellow"))
 
-    accent_fg = on_color(green, bg, fg)
+    accent_fg = on_color(accent, bg, fg)
     red_fg = on_color(red, bg, fg)
     green_fg = on_color(green, bg, fg)
-    warning_fg = on_color(accent, bg, fg)
+    yellow_fg = on_color(yellow, bg, fg)
 
     # Both @define-color (older libadwaita / some GTK4 CSS) and --vars (1.6+).
     named = {
@@ -161,10 +153,10 @@ def build_css(colors: dict[str, str]) -> str:
         "view_fg_color": fg,
         "headerbar_bg_color": card,
         "headerbar_fg_color": fg,
-        "headerbar_border_color": idle,
+        "headerbar_border_color": accent,
         "headerbar_backdrop_color": bg,
         "headerbar_shade_color": "alpha(black, 0.36)",
-        "headerbar_darker_shade_color": f"alpha({idle}, 0.55)",
+        "headerbar_darker_shade_color": f"alpha({accent}, 0.55)",
         "card_bg_color": card,
         "card_fg_color": fg,
         "card_shade_color": "alpha(black, 0.36)",
@@ -176,17 +168,17 @@ def build_css(colors: dict[str, str]) -> str:
         "sidebar_bg_color": card,
         "sidebar_fg_color": fg,
         "sidebar_backdrop_color": bg,
-        "sidebar_border_color": idle,
+        "sidebar_border_color": accent,
         "sidebar_shade_color": "alpha(black, 0.25)",
         "secondary_sidebar_bg_color": card,
         "secondary_sidebar_fg_color": fg,
         "secondary_sidebar_backdrop_color": bg,
-        "secondary_sidebar_border_color": idle,
+        "secondary_sidebar_border_color": accent,
         "secondary_sidebar_shade_color": "alpha(black, 0.25)",
         "thumbnail_bg_color": card,
         "thumbnail_fg_color": fg,
-        "accent_color": accent_ink,
-        "accent_bg_color": green,
+        "accent_color": accent,
+        "accent_bg_color": accent,
         "accent_fg_color": accent_fg,
         "destructive_color": red_ink,
         "destructive_bg_color": red,
@@ -194,9 +186,9 @@ def build_css(colors: dict[str, str]) -> str:
         "success_color": green_ink,
         "success_bg_color": green,
         "success_fg_color": green_fg,
-        "warning_color": warning_ink,
-        "warning_bg_color": accent,
-        "warning_fg_color": warning_fg,
+        "warning_color": yellow_ink,
+        "warning_bg_color": yellow,
+        "warning_fg_color": yellow_fg,
         "error_color": red_ink,
         "error_bg_color": red,
         "error_fg_color": red_fg,
@@ -215,12 +207,9 @@ def build_css(colors: dict[str, str]) -> str:
         "insensitive_bg_color": bg,
         "insensitive_fg_color": dim,
         "insensitive_base_color": bg,
-        # Finished edge for widgets that do not apply their own opacity.
-        # Header and sidebar borders stay the opaque idle stripe; libadwaita
-        # mixes those with --border-opacity itself.
-        "borders": visible,
-        "unfocused_borders": visible,
-        "link_color": link,
+        "borders": accent,
+        "unfocused_borders": accent,
+        "link_color": accent,
         "unfocused_insensitive_color": dim,
     }
 
@@ -231,10 +220,10 @@ def build_css(colors: dict[str, str]) -> str:
         "--view-fg-color": fg,
         "--headerbar-bg-color": card,
         "--headerbar-fg-color": fg,
-        "--headerbar-border-color": idle,
+        "--headerbar-border-color": accent,
         "--headerbar-backdrop-color": bg,
         "--headerbar-shade-color": "rgb(0 0 0 / 36%)",
-        "--headerbar-darker-shade-color": f"color-mix(in srgb, {idle} 55%, transparent)",
+        "--headerbar-darker-shade-color": f"color-mix(in srgb, {accent} 55%, transparent)",
         "--card-bg-color": card,
         "--card-fg-color": fg,
         "--card-shade-color": "rgb(0 0 0 / 36%)",
@@ -246,29 +235,29 @@ def build_css(colors: dict[str, str]) -> str:
         "--sidebar-bg-color": card,
         "--sidebar-fg-color": fg,
         "--sidebar-backdrop-color": bg,
-        "--sidebar-border-color": idle,
+        "--sidebar-border-color": accent,
         "--sidebar-shade-color": "rgb(0 0 0 / 25%)",
         "--secondary-sidebar-bg-color": card,
         "--secondary-sidebar-fg-color": fg,
         "--secondary-sidebar-backdrop-color": bg,
-        "--secondary-sidebar-border-color": idle,
+        "--secondary-sidebar-border-color": accent,
         "--secondary-sidebar-shade-color": "rgb(0 0 0 / 25%)",
         "--thumbnail-bg-color": card,
         "--thumbnail-fg-color": fg,
         "--overview-bg-color": card,
         "--overview-fg-color": fg,
-        "--accent-bg-color": green,
+        "--accent-bg-color": accent,
         "--accent-fg-color": accent_fg,
-        "--accent-color": accent_ink,
+        "--accent-color": accent,
         "--destructive-bg-color": red,
         "--destructive-fg-color": red_fg,
         "--destructive-color": red_ink,
         "--success-bg-color": green,
         "--success-fg-color": green_fg,
         "--success-color": green_ink,
-        "--warning-bg-color": accent,
-        "--warning-fg-color": warning_fg,
-        "--warning-color": warning_ink,
+        "--warning-bg-color": yellow,
+        "--warning-fg-color": yellow_fg,
+        "--warning-color": yellow_ink,
         "--error-bg-color": red,
         "--error-fg-color": red_fg,
         "--error-color": red_ink,
@@ -291,58 +280,7 @@ def build_css(colors: dict[str, str]) -> str:
             lines.append(f"  {name}: {value};")
         lines.append("}")
         lines.append("")
-    lines.append(semantic_rules(selection, fg, link, focus, dim, active))
     return "\n".join(lines).rstrip() + "\n"
-
-
-def semantic_rules(selection: str, foreground: str, link: str, focus: str, dim: str, active: str) -> str:
-    """Roles libadwaita derives from the accent instead of a named color.
-
-    Selected rows mix `--accent-bg-color`, links and the focus ring follow
-    `--accent-color`. Those stay on the selection fill, bright magenta, and
-    bright foreground. The ring needs !important because widget rules such as
-    `button:focus:focus-visible` outrank a bare `:focus` selector.
-    """
-    return f"""link,
-link:visited {{
-  color: {link};
-}}
-link:hover,
-link:active {{
-  color: {focus};
-}}
-
-placeholder {{
-  color: {dim};
-  opacity: 1;
-}}
-
-row:selected,
-row.activatable:selected,
-row.activatable:selected:hover,
-row.activatable:selected:active,
-row.activatable:selected.has-open-popup,
-list.boxed-list-separate > row:selected,
-.navigation-sidebar row:selected,
-.navigation-sidebar child:selected,
-.navigation-sidebar flowboxchild:selected,
-.navigation-sidebar row.activatable:selected:hover,
-.navigation-sidebar row.activatable:selected:active,
-.navigation-sidebar row.activatable:selected.has-open-popup,
-.navigation-sidebar child.activatable:selected:hover,
-.navigation-sidebar child.activatable:selected:active {{
-  background-color: {selection};
-  color: {foreground};
-}}
-
-:focus:focus-visible {{
-  outline-color: {focus} !important;
-}}
-
-window:focus-within {{
-  --headerbar-border-color: {active};
-}}
-"""
 
 
 def strip_managed_block(text: str) -> str:

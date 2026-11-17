@@ -2,12 +2,15 @@
 """Apply or clear LCARS colors for Firefox chrome.
 
 Firefox on Linux paints toolbars from GTK system colors, not from the
-libadwaita palette, so the browser stays on the default header bar. This
-writes a managed userChrome.css and userContent.css into each Firefox
-profile while LCARS is the active theme, and removes them otherwise.
+libadwaita palette, so the browser stays on the default header bar. Current
+Firefox also keeps its profiles under ~/.config/mozilla/firefox. This writes
+a managed userChrome.css and userContent.css into each browsing profile
+while LCARS is the active theme, and removes them otherwise. The WebApps
+profile is left alone; that chrome is hidden on purpose.
 
-The sheets use the named palette: card chrome, a well-colored address
-field, a green current tab, amber attention, and the purple selection fill.
+The sheets set named palette tokens on :root and nothing else. Chrome
+stays the page background, the accent is the palette accent, and toolbar
+icon buttons keep a clear background.
 Firefox reads userChrome.css only after
 toolkit.legacyUserProfileCustomizations.stylesheets is true, so that pref
 is set in a managed user.js block. Existing user CSS and prefs stay.
@@ -66,148 +69,63 @@ def load_colors(path: Path) -> dict[str, str]:
     return out
 
 
-def palette(colors: dict[str, str]) -> dict[str, str]:
+def token_block(colors: dict[str, str]) -> str:
+    """Named colors only. No widget rules, so icon buttons keep a clear background."""
     bg = colors["background"]
     fg = colors["foreground"]
+    accent = colors["accent"]
     card = colors.get("lighter_background", bg)
-    idle = colors.get("hyprland_inactive_border", colors.get("selection", card))
-    return {
-        "well": bg,
-        "card": card,
-        "fg": fg,
-        "dim": colors.get("dark_foreground", fg),
-        "focus": colors.get("bright_foreground", fg),
-        "idle": idle,
-        "edge": colors.get("dark_foreground", fg),
-        "active": colors.get("magenta") or colors.get("hyprland_active_border") or colors["accent"],
-        "selection": colors.get("selection", idle),
-        "current": colors["green"],
-        "current_hover": colors.get("bright_green", colors["green"]),
-        "accent": colors["accent"],
-        "link": colors.get("bright_magenta", colors.get("magenta", colors["accent"])),
-        "danger": colors["red"],
-    }
-
-
-def token_block(role: dict[str, str]) -> str:
-    return f"""  --toolbox-background-color: {role["card"]};
-  --toolbox-background-color-inactive: {role["card"]};
-  --toolbox-text-color: {role["fg"]};
-  --toolbox-text-color-inactive: {role["dim"]};
-  --toolbar-background-color: {role["card"]};
-  --toolbar-text-color: {role["fg"]};
-  --toolbar-color: {role["fg"]};
-  --toolbar-field-background-color: {role["well"]};
-  --toolbar-field-background-color-focus: {role["well"]};
-  --toolbar-field-color: {role["fg"]};
-  --toolbar-field-text-color: {role["fg"]};
-  --toolbar-field-text-color-focus: {role["focus"]};
-  --toolbar-field-border-color: {role["idle"]};
-  --toolbar-field-border-color-focus: {role["active"]};
-  --toolbar-field-focus-border-color: {role["active"]};
-  --urlbar-background-color: {role["well"]};
-  --urlbar-background-color-focus: {role["well"]};
-  --urlbarview-background-color-selected: {role["selection"]};
-  --urlbarview-text-color-selected: {role["fg"]};
-  --sidebar-background-color: {role["card"]};
-  --sidebar-text-color: {role["fg"]};
-  --sidebar-border-color: {role["idle"]};
-  --panel-background-color: {role["card"]};
-  --panel-text-color: {role["fg"]};
-  --panel-border-color: {role["idle"]};
-  --arrowpanel-background: {role["card"]};
-  --arrowpanel-color: {role["fg"]};
-  --arrowpanel-border-color: {role["idle"]};
-  --chrome-content-separator-color: {role["idle"]};
-  --tabs-navbar-separator-color: {role["idle"]};
-  --tab-background-color-hover: {role["idle"]};
-  --tab-background-color-selected: {role["well"]};
-  --tab-text-color-selected: {role["current"]};
-  --tab-border-color-selected: {role["current"]};
-  --tab-border-color-selected-leading: {role["current"]};
-  --tab-border-color-selected-trailing: {role["active"]};
-  --color-accent-primary: {role["current"]};
-  --color-accent-primary-hover: {role["current_hover"]};
-  --color-accent-primary-active: {role["current"]};
-  --color-accent-attention: {role["accent"]};
-  --button-background-color-primary: {role["current"]};
-  --button-text-color-primary: {role["well"]};
-  --button-background-color-destructive: {role["danger"]};
-  --button-background-color-menu-selected: {role["selection"]};
-  --button-text-color-menu-selected: {role["fg"]};
-  --toolbarbutton-icon-fill-attention: {role["accent"]};
-  --link-color: {role["link"]};
-  --link-color-hover: {role["focus"]};
-  --link-color-active: {role["focus"]};
-  --focus-outline-color: {role["focus"]};
-  --input-text-background-color: {role["well"]};
-  --input-text-color: {role["fg"]};
-  --border-color: {role["edge"]};
-  --border-color-selected: {role["active"]};
-  --background-color-canvas: {role["well"]};
-  --background-color-box: {role["card"]};
-  --background-color-list-item-hover: {role["idle"]};
-  --text-color: {role["fg"]};
-  accent-color: {role["current"]};"""
+    selection = colors.get("selection", card)
+    return f"""  --toolbox-background-color: {bg};
+  --toolbox-background-color-inactive: {bg};
+  --toolbox-text-color: {fg};
+  --toolbox-text-color-inactive: {fg};
+  --toolbar-background-color: {bg};
+  --toolbar-text-color: {fg};
+  --toolbar-color: {fg};
+  --toolbar-field-background-color: {bg};
+  --toolbar-field-background-color-focus: {bg};
+  --toolbar-field-color: {fg};
+  --toolbar-field-text-color: {fg};
+  --sidebar-background-color: {bg};
+  --sidebar-text-color: {fg};
+  --panel-background-color: {card};
+  --panel-text-color: {fg};
+  --arrowpanel-background: {card};
+  --arrowpanel-color: {fg};
+  --color-accent-primary: {accent};
+  --color-accent-primary-hover: {accent};
+  --color-accent-primary-active: {accent};
+  --toolbarbutton-icon-fill: {fg};
+  --toolbarbutton-icon-fill-attention: {accent};
+  --button-background-color: transparent;
+  --button-background-color-hover: transparent;
+  --button-background-color-active: transparent;
+  --toolbarbutton-background-color-hover: transparent;
+  --toolbarbutton-background-color-active: transparent;
+  --link-color: {accent};
+  --focus-outline-color: {accent};
+  --urlbarview-background-color-selected: {selection};
+  --urlbarview-text-color-selected: {fg};
+  accent-color: {accent};"""
 
 
 def build_chrome(colors: dict[str, str]) -> str:
-    role = palette(colors)
-    tokens = token_block(role)
-    # Linux toolbars set background-color to -moz-headerbar directly, so the
-    # toolbar variable alone never reaches the navigation bar.
     return f"""/* Generated by omarchy-lcars firefox-chrome. Do not edit. */
 /* Palette follows the active Omarchy theme's colors.toml when LCARS is selected. */
 
 :root {{
-{tokens}
-}}
-
-toolbox,
-toolbar,
-#navigator-toolbox,
-#nav-bar,
-#TabsToolbar,
-#PersonalToolbar,
-#titlebar {{
-  background-color: {role["card"]} !important;
-  color: {role["fg"]} !important;
-}}
-
-toolbox:-moz-window-inactive,
-toolbar:-moz-window-inactive,
-#navigator-toolbox:-moz-window-inactive {{
-  background-color: {role["card"]} !important;
-  color: {role["dim"]} !important;
-}}
-
-#urlbar-input::placeholder {{
-  color: {role["dim"]} !important;
-  opacity: 1 !important;
-}}
-
-panel,
-menupopup {{
-  --panel-background-color: {role["card"]} !important;
-  background-color: {role["card"]} !important;
-  color: {role["fg"]} !important;
+{token_block(colors)}
 }}
 """
 
 
 def build_content(colors: dict[str, str]) -> str:
-    role = palette(colors)
-    tokens = token_block(role)
     return f"""/* Generated by omarchy-lcars firefox-chrome. Do not edit. */
 
 @-moz-document url-prefix("about:"), url-prefix("chrome://") {{
   :root {{
-{tokens}
-  }}
-
-  :root {{
-    background-color: {role["well"]};
-    color: {role["fg"]};
+{token_block(colors)}
   }}
 }}
 """
@@ -250,8 +168,11 @@ def write_pref(path: Path, enable: bool) -> None:
 
 
 def firefox_roots(home: Path) -> list[Path]:
+    # Firefox 144+ uses the XDG config dir when ~/.mozilla was never created.
     return [
+        home / ".config/mozilla/firefox",
         home / ".mozilla/firefox",
+        home / ".var/app/org.mozilla.firefox/.config/mozilla/firefox",
         home / ".var/app/org.mozilla.firefox/.mozilla/firefox",
     ]
 
@@ -269,6 +190,9 @@ def profiles(home: Path) -> list[Path]:
             continue
         for section in parser.sections():
             if not parser.has_option(section, "Path"):
+                continue
+            # The webapp profile hides the toolbar. Recoloring it fights that.
+            if parser.get(section, "Name", fallback="") == "WebApps":
                 continue
             raw = parser.get(section, "Path")
             relative = parser.get(section, "IsRelative", fallback="1") == "1"
