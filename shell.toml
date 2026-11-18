@@ -1,90 +1,116 @@
+# Shell roles follow the Dark-R UI language (enterprise-r.com/showcase):
+#   hover          --ui-accent       #f0a202   (r-btn-hover)
+#   keyboard focus --ui-fg-bright    #fff3e6   (r-focus)
+#   current/chosen --ui-green        #77af8a   (r-primary)
+#   active line    --ui-border-active #ba9eda  (focused field, active card)
+#   cards, panels  --ui-bg-lighter   #181820, border --ui-fg-dark #9385a5
+#   dim text       --ui-fg-dark      #9385a5   (placeholders)
+#   notices        info blue, ok green, warn amber, error red
+# Borders and focus rings stay opaque so they clear 3:1 on the background.
+
 [bar]
 background = "#0c040f"
 background-alpha = 1.0
 text = "#b6c1cc"
-active = "#f4b965"
+# Modules asking for attention read as a warning notice.
+active = "#f0a202"
 scale-with-font = true
 size-horizontal = 32
 size-vertical = 32
 
 [controls]
-normal-color = "#a5ace1"
+normal-color = "#e0e6e2"
 normal-fill-alpha = 0.06
-normal-border = "#a5ace1"
-normal-border-alpha = 0.28
+normal-border = "#9385a5"
+normal-border-alpha = 1.0
 normal-border-width = 1
-hover-cursor-color = "#f4b965"
+hover-cursor-color = "#f0a202"
 hover-cursor-fill-alpha = 0.15
-hover-cursor-border = "#f4b965"
-hover-cursor-border-alpha = 0.8
-focus-color = "#f4b965"
-focus-border = "#f4b965"
+hover-cursor-border = "#f0a202"
+hover-cursor-border-alpha = 1.0
+focus-color = "#fff3e6"
+focus-border = "#fff3e6"
 focus-border-alpha = 1.0
 focus-fill-alpha = 0.16
-selected-color = "#f4b965"
+selected-color = "#77af8a"
 selected-fill-alpha = 0.18
-selected-border = "#f4b965"
+selected-border = "#77af8a"
 selected-border-width = 1
-selected-border-alpha = 0.7
+selected-border-alpha = 1.0
 
 [popups]
-background = "#0c040f"
+background = "#181820"
 background-alpha = 1.0
 text = "#e0e6e2"
-border = "#a5ace1"
+border = "#9385a5"
 border-width = 1
 
 [tooltip]
 background = "#181820"
 background-alpha = 1.0
 text = "#e0e6e2"
-border = "#a5ace1"
+border = "#9385a5"
 # A 1px rounded border loses its outer bottom pixel, so that edge is thicker.
 border-width = "1 1 2"
 
 [notifications]
-background = "#0c040f"
+background = "#181820"
 background-alpha = 1.0
 text = "#e0e6e2"
-border = "#f4b965"
+# An ordinary notification is an info notice.
+border = "#a5ace1"
 border-width = "3 1 1"
 countdown = "#a5ace1"
 
 [launcher]
-background = "#0c040f"
+background = "#181820"
 background-alpha = 1.0
 text = "#e0e6e2"
-border = "#a5ace1"
+border = "#9385a5"
 border-width = "4 1 1"
 scrim = "#0c040f"
 scrim-alpha = 0.55
-selected-background = "#f4b965"
+# The highlighted row follows the keyboard cursor: the hover role.
+selected-background = "#f0a202"
 selected-background-alpha = 1.0
 selected-text = "#0c040f"
-selected-border = "#f4b965"
+selected-border = "#f0a202"
 selected-border-alpha = 1.0
 
 [menu]
-background = "#0c040f"
+background = "#181820"
 background-alpha = 1.0
 text = "#e0e6e2"
-border = "#f4b965"
+border = "#9385a5"
 border-width = "4 1 1"
 scrim = "#0c040f"
 scrim-alpha = 0.55
-selected-background = "#77af8a"
+selected-background = "#f0a202"
 selected-background-alpha = 1.0
 selected-text = "#0c040f"
-selected-border = "#77af8a"
+selected-border = "#f0a202"
 selected-border-alpha = 1.0
 
-[lock]
-background = "#0c040f"
+[polkit]
+background = "#181820"
 background-alpha = 1.0
 text = "#e0e6e2"
-placeholder = "#a5ace1"
-border = "#a5ace1"
-border-active = "#f4b965"
+text-error = "#ec8790"
+border = "#9385a5"
 border-error = "#ec8790"
-selection = "#f4b965"
-selection-alpha = 0.35
+border-alpha = 1.0
+scrim = "#0c040f"
+scrim-alpha = 0.55
+accent = "#f0a202"
+
+[lock]
+background = "#181820"
+background-alpha = 1.0
+text = "#e0e6e2"
+placeholder = "#9385a5"
+text-error = "#ec8790"
+border = "#9385a5"
+border-active = "#ba9eda"
+border-error = "#ec8790"
+selection = "#41285b"
+selection-alpha = 1.0
