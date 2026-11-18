@@ -15,7 +15,7 @@ BarWidget {
   // sample in a color property; a var copy does not expose hslLightness.
   readonly property color ink: bar ? bar.barForeground : "#00000000"
   readonly property bool darkInk: bar && bar.transparent === true && ink.a > 0.5 && ink.hslLightness < 0.45
-  readonly property color plateColor: darkInk ? "#d5dce3" : Color.background
+  readonly property color plateColor: darkInk ? "#e0e6e2" : Color.background
   // Clear bars leave the wallpaper showing. Opaque and glassy bars paint a
   // full strip; that strip uses this same plate color.
   readonly property bool fullBar: bar && bar.transparent === false

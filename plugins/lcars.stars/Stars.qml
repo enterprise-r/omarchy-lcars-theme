@@ -121,7 +121,7 @@ BarWidget {
         width: 1
         height: 1
         radius: 0.5
-        color: "#cfdae6"
+        color: "#cad9e7"
         opacity: 0.14 + (index % 3) * 0.025
       }
     }
@@ -139,8 +139,9 @@ BarWidget {
         readonly property real rayY: ((index * 7) % 23 - 11) * (field.height / 32)
         readonly property real trailLength: 1 + Math.pow(depth, 1.4) * (index % 5 === 0 ? 100 : 68)
         readonly property real thickness: 0.8 + depth * 0.55
-        readonly property color headColor: index % 4 === 0 ? "#cedceb" : "#e4eafa"
-        readonly property color tailColor: index % 7 === 0 ? "#ba7c79" : "#929dbf"
+        // Palette colors only: bright cyan and foreground heads, blue and brown tails.
+        readonly property color headColor: index % 4 === 0 ? "#cad9e7" : "#e0e6e2"
+        readonly property color tailColor: index % 7 === 0 ? "#a88070" : "#a5ace1"
         // The trails converge on the middle of the bar.
         x: field.width / 2 + rayX * depth
         y: field.height / 2 + rayY * depth

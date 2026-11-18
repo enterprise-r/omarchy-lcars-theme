@@ -167,8 +167,8 @@ BarWidget {
       anchors.top: parent.top
       height: parent.height - 2
       radius: 12
-      // Workspace 05's chip.
-      color: "#7b6395"
+      // Same as an empty workspace chip.
+      color: "#9385a5"
     }
     Column {
       visible: root.vertical

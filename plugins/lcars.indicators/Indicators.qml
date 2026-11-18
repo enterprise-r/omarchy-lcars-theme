@@ -469,7 +469,8 @@ BarWidget {
       onStatusChanged: if (status === Loader.Error) console.warn("Indicator loader error", indicatorSlot.indicatorId, source)
     }
 
-    // An active icon is green at full strength. Inactive icons sit at 45%.
+    // An active icon is green at full strength. Inactive icons sit at 55%,
+    // which keeps them at 3:1 on the background (45% was 2.9:1).
     Binding {
       target: indicatorSource.item
       property: "foreground"
@@ -487,7 +488,7 @@ BarWidget {
         var item = indicatorSource.item
         if (!item || item.belongsInBlock !== true) return 0
         if (item.effectiveActive) return 1
-        return item.inactiveRevealed === true ? 0.45 : 0
+        return item.inactiveRevealed === true ? 0.55 : 0
       }
     }
 
