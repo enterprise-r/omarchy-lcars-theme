@@ -1,7 +1,7 @@
 -- LCARS geometry stays with this theme; switching themes restores defaults.
 -- Window opacity and blur are left to Omarchy's Glassy toggle.
--- These colors match hyprland_*_border in colors.toml.
-local active_border_color = "rgba(a5ace1ff)"
+-- Colors follow Dark-R: --ui-border-active and --ui-border, as in colors.toml.
+local active_border_color = "rgba(ba9edaff)"
 local inactive_border_color = "rgba(3f2c53ff)"
 
 hl.config({

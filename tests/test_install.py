@@ -126,7 +126,7 @@ class Installation(unittest.TestCase):
         self.assertIn('--sidebar-bg-color: #181820;', css)
         self.assertIn('--popover-bg-color: #181820;', css)
         self.assertIn('--headerbar-border-color: #f0a202;', css)
-        self.assertIn('--warning-bg-color: #f4b965;', css)
+        self.assertIn('--warning-bg-color: #e4d58b;', css)
         self.assertIn('--success-bg-color: #77af8a;', css)
         self.assertIn('@define-color theme_selected_bg_color #41285b;', css)
         self.assertIn('@define-color link_color #f0a202;', css)
@@ -392,7 +392,7 @@ class Installation(unittest.TestCase):
         m.write_json(self.shell, shell)
         yellow = 'yellow = "#abcdef"'
         colors = source/'colors.toml'
-        colors.write_text(colors.read_text().replace('yellow = "#f4b965"', yellow))
+        colors.write_text(colors.read_text().replace('yellow = "#e4d58b"', yellow))
         record = self.install(source=source, reinstall=True)
         installed = self.home/'.config/omarchy/themes/lcars'
         self.assertIn(yellow, (installed/'colors.toml').read_text())
@@ -463,7 +463,7 @@ class Installation(unittest.TestCase):
         colors = self.home/'.config/omarchy/themes/lcars/colors.toml'
         before_colors = colors.read_text()
         before_record = (self.home/'.local/state/omarchy-lcars/install.json').read_text()
-        (source/'colors.toml').write_text(before_colors.replace('yellow = "#f4b965"', 'yellow = "#abcdef"'))
+        (source/'colors.toml').write_text(before_colors.replace('yellow = "#e4d58b"', 'yellow = "#abcdef"'))
         with patch.object(m.subprocess, 'run', side_effect=[subprocess.CalledProcessError(1, 'omarchy'), None, None]):
             with self.assertRaises(subprocess.CalledProcessError):
                 m.install(self.home, source=source, apply=True, omarchy_path=self.platform, reinstall=True)
