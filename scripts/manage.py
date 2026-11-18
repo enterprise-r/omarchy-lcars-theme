@@ -13,9 +13,12 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = ['menu', 'clock', 'workspaces', 'weather', 'keyboard-layout', 'system-update', 'indicators']
-THEME_FILES = ['colors.toml', 'shell.toml', 'hyprland.lua', 'alacritty.toml', 'ghostty.conf', 'kitty.conf', 'foot.ini', 'icons.theme']
-# Earlier installs copied Foot's swapped slots into VS Code after each theme set.
-RETIRED_HOOKS = {'lcars-vscode-terminal.py', 'lcars-vscode-terminal.sh'}
+# Terminal configs are not shipped: Omarchy renders them from colors.toml.
+THEME_FILES = ['colors.toml', 'shell.toml', 'hyprland.lua', 'icons.theme']
+# Hooks earlier installs added. Reinstall removes them.
+# vscode-terminal copied Foot's swapped slots into VS Code after each theme set.
+# foot-opacity kept live Foot alpha in step; transparency is now Omarchy's Glassy toggle.
+RETIRED_HOOKS = {'lcars-vscode-terminal.py', 'lcars-vscode-terminal.sh', 'lcars-foot-opacity.py', 'lcars-foot-opacity.sh'}
 # Always shipped with the palette so GTK4/libadwaita apps can follow LCARS.
 GTK4_HOOK_PY = 'lcars-gtk4-libadwaita.py'
 GTK4_HOOK_SH = 'lcars-gtk4.sh'
@@ -132,18 +135,6 @@ def locally_edited(target, recorded, incoming=None):
         return False
     if incoming is None and target.is_dir() and any(p.is_symlink() for p in target.rglob('*')):
         return False
-    return True
-
-def theme_uses_transparency(config):
-    foot = config / 'themes/lcars/foot.ini'
-    if not foot.is_file() or foot.is_symlink():
-        return True
-    for line in foot.read_text().splitlines():
-        if line.startswith('alpha='):
-            try:
-                return float(line.split('=', 1)[1].strip()) < 1
-            except ValueError:
-                return True
     return True
 
 CLUSTER = ('centerBegin', 'center', 'centerEnd')
@@ -330,26 +321,12 @@ def check_hyprland():
 def paths(home):
     return home / '.config/omarchy', home / '.local/state/omarchy-lcars'
 
-def populate_stage(stage, source, transparency):
+def populate_stage(stage, source):
     theme_stage = stage / 'lcars'
     theme_stage.mkdir()
     for name in THEME_FILES:
         shutil.copy2(source / name, theme_stage / name)
     shutil.copytree(source / 'backgrounds', theme_stage / 'backgrounds')
-    if not transparency:
-        p = theme_stage / 'hyprland.lua'
-        p.write_text(p.read_text().replace('inactive_opacity = 0.94', 'inactive_opacity = 1.0').replace('opacity = "1 0.94"', 'opacity = "1 1"'))
-        for name, old, new in [('alacritty.toml', 'opacity = 0.85', 'opacity = 1.0'), ('ghostty.conf', 'background-opacity = 0.85', 'background-opacity = 1.0'), ('kitty.conf', 'background_opacity 0.85', 'background_opacity 1.0'), ('foot.ini', 'alpha=0.85', 'alpha=1.0')]:
-            p = theme_stage / name
-            p.write_text(p.read_text().replace(old, new))
-    else:
-        helper = stage / 'lcars-foot-opacity.py'
-        shutil.copy2(source / 'scripts/foot-opacity.py', helper)
-        helper.chmod(0o755)
-        # Theme hooks are executed with bash, which does not honor a Python shebang.
-        foot_wrapper = stage / 'lcars-foot-opacity.sh'
-        foot_wrapper.write_text('#!/bin/bash\nexec python3 "$HOME/.config/omarchy/hooks/lcars-foot-opacity.py"\n')
-        foot_wrapper.chmod(0o755)
     stage_palette_hooks(stage, source)
     return theme_stage
 
@@ -359,6 +336,7 @@ def stage_palette_hooks(stage, source):
         helper = stage / helper_name
         shutil.copy2(source / relative, helper)
         helper.chmod(0o755)
+        # Theme hooks are executed with bash, which does not honor a Python shebang.
         wrapper = stage / wrapper_name
         wrapper.write_text(
             '#!/bin/bash\n'
@@ -433,11 +411,11 @@ def managed_source(target, theme_stage, source, stage):
             return None
         return plugin
     staged = stage / target.name
-    if target.name in ['lcars-foot-opacity.py', 'lcars-foot-opacity.sh', *PALETTE_HOOK_NAMES] and staged.exists():
+    if target.name in PALETTE_HOOK_NAMES and staged.exists():
         return staged
     raise RuntimeError('No source for managed path: ' + str(target))
 
-def install(home, source=ROOT, theme_only=False, transparency=True, apply=True, omarchy_path=None, reinstall=False):
+def install(home, source=ROOT, theme_only=False, apply=True, omarchy_path=None, reinstall=False):
     config, state = paths(home)
     record_file = state / 'install.json'
     if record_file.exists():
@@ -463,14 +441,11 @@ def install(home, source=ROOT, theme_only=False, transparency=True, apply=True, 
     stage = state / ('stage-' + stamp)
     stage.mkdir(parents=True)
     try:
-        theme_stage = populate_stage(stage, source, transparency)
+        theme_stage = populate_stage(stage, source)
         targets = [(theme_stage, config / 'themes/lcars')]
         if not theme_only:
             for plugin in sorted((source / 'plugins').iterdir()):
                 targets.append((plugin, config / 'plugins' / plugin.name))
-        if transparency:
-            targets.append((stage / 'lcars-foot-opacity.py', config / 'hooks/lcars-foot-opacity.py'))
-            targets.append((stage / 'lcars-foot-opacity.sh', config / 'hooks/theme-set.d/lcars-foot-opacity.sh'))
         targets.extend(palette_hook_targets(config, stage))
         for _, target in targets:
             if target.is_symlink():
@@ -530,7 +505,6 @@ def refresh(home, source, apply):
         raise RuntimeError('Unsupported LCARS install record.')
     theme_only = bool(record.get('theme_only'))
     config = paths(home)[0]
-    transparency = any(Path(entry['path']).name == 'lcars-foot-opacity.py' for entry in record['targets']) or theme_uses_transparency(config)
     stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')
     stage = state / ('stage-' + stamp)
     snapshot = state / ('reinstall-' + stamp)
@@ -538,7 +512,7 @@ def refresh(home, source, apply):
     snapshot.mkdir()
     replaced = []
     try:
-        theme_stage = populate_stage(stage, source, transparency)
+        theme_stage = populate_stage(stage, source)
         checked = []
         sources = []
         existing_paths = {entry['path'] for entry in record['targets']}
@@ -633,7 +607,6 @@ def uninstall(home, apply=True):
     if apply:
         if active == 'lcars' and record['previous_theme']:
             subprocess.run(['omarchy', 'theme', 'set', record['previous_theme']], check=True)
-        subprocess.run([sys.executable, str(ROOT / 'scripts/foot-opacity.py')], check=True)
         clear_gtk4(home)
         clear_firefox(home)
         subprocess.run(['omarchy', 'restart', 'shell'], check=True)
@@ -650,21 +623,20 @@ def main():
     p.add_argument('--uninstall', action='store_true')
     p.add_argument('--reinstall', action='store_true', help='refresh managed files from this checkout and apply LCARS again')
     p.add_argument('--theme-only', action='store_true')
-    p.add_argument('--no-transparency', action='store_true')
     p.add_argument('--no-apply', action='store_true', help='install files without reloading the live desktop')
     args = p.parse_args()
     if os.geteuid() == 0:
         p.error('Run as your desktop user, without sudo.')
     if args.reinstall and args.uninstall:
         p.error('--reinstall cannot be combined with --uninstall.')
-    if args.reinstall and (args.theme_only or args.no_transparency):
+    if args.reinstall and args.theme_only:
         p.error('--reinstall keeps the original install options. Uninstall first to change them.')
     try:
         if args.uninstall:
             record = uninstall(Path.home(), apply=not args.no_apply)
             print('LCARS uninstalled. Backup retained:', record['backup'])
         else:
-            record = install(Path.home(), theme_only=args.theme_only, transparency=not args.no_transparency, apply=not args.no_apply, reinstall=args.reinstall)
+            record = install(Path.home(), theme_only=args.theme_only, apply=not args.no_apply, reinstall=args.reinstall)
             if args.reinstall:
                 print('LCARS reinstalled. Restart applications if they do not live-reload their theme.')
             else:

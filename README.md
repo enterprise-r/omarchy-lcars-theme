@@ -31,7 +31,7 @@ Terminals on the wallpaper. The text in this shot is a demo.
 
 ## What you get
 
-- Hyprland borders, the warp wallpaper, and terminal colors for Alacritty, Kitty, Ghostty, and Foot
+- Hyprland borders, the warp wallpaper, and the palette in `colors.toml`, which Omarchy turns into terminal, editor, and app colors
 - A Quickshell bar with LCARS plates, a centered workspace indicator, and the starfield painted behind the controls
 - GTK 3, GTK 4 / libadwaita, Firefox chrome, and a VS Code surface split, written while LCARS is active and cleared when you leave it
 
@@ -62,21 +62,19 @@ from the screenshots.
 ## Choose your level of immersion
 
 ```bash
-./install.sh --no-transparency    # Keep windows and terminals opaque
 ./install.sh --theme-only         # Palette and wallpaper, without bar changes
 ./install.sh --reinstall          # Refresh an existing install and apply it
 ```
 
-Flags can be combined on the first install. To change those options later,
+To switch between the palette-only and complete installs later,
 uninstall and install again. `./install.sh --reinstall` copies this checkout
 over the managed theme, plugins, and hooks, then applies LCARS again. Your
 shell layout and the original options stay in place. Reinstall stops if a
 managed file has local edits. The installer still refuses to overwrite another
 plugin that uses an `lcars.*` name.
 
-Focused windows are fully opaque; inactive windows use 94%. Terminal backgrounds
-use 75% alpha while retaining legible glyphs. The Foot theme hook updates
-already-open terminals without closing their sessions. No blur is required.
+LCARS leaves window and terminal transparency to Omarchy. Turn on Glassy from
+the Omarchy menu if you want see-through terminals over the warp wallpaper.
 
 You can also install this repository through Omarchy's ordinary theme picker
 for the palette and wallpaper. **The complete animated bar requires running the

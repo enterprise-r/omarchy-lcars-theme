@@ -45,7 +45,6 @@ class Installation(unittest.TestCase):
             shutil.copy2(ROOT/name, source/name)
         shutil.copytree(ROOT/'backgrounds', source/'backgrounds')
         shutil.copytree(ROOT/'plugins', source/'plugins')
-        shutil.copy2(ROOT/'scripts'/'foot-opacity.py', source/'scripts'/'foot-opacity.py')
         shutil.copy2(ROOT/'scripts'/'gtk4-libadwaita.py', source/'scripts'/'gtk4-libadwaita.py')
         shutil.copy2(ROOT/'scripts'/'vscode-surfaces.py', source/'scripts'/'vscode-surfaces.py')
         shutil.copy2(ROOT/'scripts'/'firefox-chrome.py', source/'scripts'/'firefox-chrome.py')
@@ -113,25 +112,25 @@ class Installation(unittest.TestCase):
         g = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(g)
         css = g.build_css(g.load_colors(ROOT/'colors.toml'))
-        self.assertIn('@define-color accent_bg_color #f0A202;', css)
-        self.assertIn('@define-color accent_color #f0A202;', css)
+        self.assertIn('@define-color accent_bg_color #f0a202;', css)
+        self.assertIn('@define-color accent_color #f0a202;', css)
         self.assertIn('--window-bg-color: #0c040f;', css)
         self.assertIn('--view-bg-color: #0c040f;', css)
         self.assertIn('--accent-fg-color: #0c040f;', css)
         # Accent is the palette accent. No extra widget rules.
-        self.assertIn('--accent-color: #f0A202;', css)
-        self.assertIn('--accent-bg-color: #f0A202;', css)
+        self.assertIn('--accent-color: #f0a202;', css)
+        self.assertIn('--accent-bg-color: #f0a202;', css)
         self.assertNotIn('oklab(', css)
         self.assertIn('--headerbar-bg-color: #181820;', css)
         self.assertIn('--card-bg-color: #181820;', css)
         self.assertIn('--sidebar-bg-color: #181820;', css)
         self.assertIn('--popover-bg-color: #181820;', css)
-        self.assertIn('--headerbar-border-color: #f0A202;', css)
-        self.assertIn('--warning-bg-color: #e4d58b;', css)
+        self.assertIn('--headerbar-border-color: #f0a202;', css)
+        self.assertIn('--warning-bg-color: #f4b965;', css)
         self.assertIn('--success-bg-color: #77af8a;', css)
         self.assertIn('@define-color theme_selected_bg_color #41285b;', css)
-        self.assertIn('@define-color link_color #f0A202;', css)
-        self.assertIn('@define-color borders #f0A202;', css)
+        self.assertIn('@define-color link_color #f0a202;', css)
+        self.assertIn('@define-color borders #f0a202;', css)
         self.assertNotIn('outline-color: #', css)
         self.assertNotIn('row:selected', css)
         self.assertNotIn('#a5ace1', css)
@@ -145,7 +144,7 @@ class Installation(unittest.TestCase):
         self.assertEqual(g.apply(home), 0)
         gtk_css = (home/'.config/gtk-4.0/gtk.css').read_text()
         self.assertIn('omarchy-lcars.css', gtk_css)
-        self.assertIn('#f0A202', (home/'.config/gtk-4.0/omarchy-lcars.css').read_text())
+        self.assertIn('#f0a202', (home/'.config/gtk-4.0/omarchy-lcars.css').read_text())
         (home/'.local/state/omarchy/current/theme.name').write_text('nord\n')
         self.assertEqual(g.apply(home), 0)
         self.assertFalse((home/'.config/gtk-4.0/omarchy-lcars.css').exists())
@@ -244,8 +243,8 @@ class Installation(unittest.TestCase):
         spec.loader.exec_module(f)
         css = f.build_chrome(f.load_colors(ROOT/'colors.toml'))
         self.assertIn('--toolbar-background-color: #0c040f;', css)
-        self.assertIn('--color-accent-primary: #f0A202;', css)
-        self.assertIn('--link-color: #f0A202;', css)
+        self.assertIn('--color-accent-primary: #f0a202;', css)
+        self.assertIn('--link-color: #f0a202;', css)
         self.assertIn('--button-background-color: transparent;', css)
         self.assertIn('--urlbarview-background-color-selected: #41285b;', css)
         self.assertIn('--panel-background-color: #181820;', css)
@@ -276,7 +275,7 @@ class Installation(unittest.TestCase):
         self.assertIn('/* mine */', chrome)
         self.assertIn('omarchy-lcars.css', chrome)
         sheet = (profile/'chrome/omarchy-lcars.css').read_text()
-        self.assertIn('#f0A202', sheet)
+        self.assertIn('#f0a202', sheet)
         self.assertIn('#0c040f', sheet)
         self.assertNotIn('#77af8a', sheet)
         self.assertFalse((webapp/'chrome/omarchy-lcars.css').exists())
@@ -306,10 +305,11 @@ class Installation(unittest.TestCase):
         self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-vscode-terminal.sh').exists())
         self.assertFalse((self.home/'.config/omarchy/hooks/lcars-vscode-terminal.py').exists())
         self.assert_vscode_hooks()
-        foot_hook = self.home/'.config/omarchy/hooks/theme-set.d/lcars-foot-opacity.sh'
-        self.assertIn('lcars-foot-opacity.py', foot_hook.read_text())
-        self.assertTrue((self.home/'.config/omarchy/hooks/lcars-foot-opacity.py').is_file())
-        self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-foot-opacity.py').exists())
+        self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-foot-opacity.sh').exists())
+        self.assertFalse((self.home/'.config/omarchy/hooks/lcars-foot-opacity.py').exists())
+        theme = self.home/'.config/omarchy/themes/lcars'
+        for name in ('alacritty.toml', 'kitty.conf', 'ghostty.conf', 'foot.ini'):
+            self.assertFalse((theme/name).exists())  # Omarchy renders these from colors.toml.
         d['idle']['lock'] = 900
         d['bar']['layout']['right'].append({'id': 'new.widget'})
         clock['timezone'] = 'UTC'
@@ -392,13 +392,10 @@ class Installation(unittest.TestCase):
         m.write_json(self.shell, shell)
         yellow = 'yellow = "#abcdef"'
         colors = source/'colors.toml'
-        colors.write_text(colors.read_text().replace('yellow = "#e4d58b"', yellow))
-        foot = source/'foot.ini'
-        foot.write_text(foot.read_text().replace('regular3=f4b965', 'regular3=abcdef'))
+        colors.write_text(colors.read_text().replace('yellow = "#f4b965"', yellow))
         record = self.install(source=source, reinstall=True)
         installed = self.home/'.config/omarchy/themes/lcars'
         self.assertIn(yellow, (installed/'colors.toml').read_text())
-        self.assertIn('regular3=abcdef', (installed/'foot.ini').read_text())
         self.assertEqual(m.digest(installed), next(e['digest'] for e in record['targets'] if e['path'].endswith('/themes/lcars')))
         restored = json.loads(self.shell.read_text())
         self.assertEqual(restored['idle']['lock'], 900)
@@ -406,34 +403,41 @@ class Installation(unittest.TestCase):
         self.assertEqual([x['id'] for x in restored['bar']['layout']['left']].count('lcars.stars'), 1)
         m.uninstall(self.home, apply=False)
         self.assertEqual(personal.read_text(), 'personal palette')
-    def test_reinstall_removes_retired_vscode_hook(self):
+    def test_reinstall_removes_retired_hooks(self):
+        for name, sh in (('lcars-vscode-terminal', 'lcars-vscode-terminal.sh'), ('lcars-foot-opacity', 'lcars-foot-opacity.sh')):
+            with self.subTest(hook=name):
+                self.setUp()
+                source = self.source_copy()
+                self.install(source=source)
+                hook = self.home/'.config/omarchy/hooks/theme-set.d'/sh
+                helper = self.home/'.config/omarchy/hooks'/(name + '.py')
+                hook.parent.mkdir(parents=True, exist_ok=True)
+                hook.write_text(f'#!/bin/bash\nexec python3 "$HOME/.config/omarchy/hooks/{name}.py"\n')
+                helper.write_text('print("old hook")\n')
+                record_path = self.home/'.local/state/omarchy-lcars/install.json'
+                record = json.loads(record_path.read_text())
+                record['targets'].extend([
+                    {'path': str(helper), 'saved': None, 'digest': m.digest(helper)},
+                    {'path': str(hook), 'saved': None, 'digest': m.digest(hook)},
+                ])
+                record_path.write_text(json.dumps(record))
+                self.install(source=source, reinstall=True)
+                self.assertFalse(hook.exists())
+                self.assertFalse(helper.exists())
+                saved = json.loads(record_path.read_text())
+                self.assertFalse(any(name in entry['path'] for entry in saved['targets']))
+                self.tearDown()
+    def test_reinstall_drops_old_terminal_configs(self):
         source = self.source_copy()
         self.install(source=source)
-        hook = self.home/'.config/omarchy/hooks/theme-set.d/lcars-vscode-terminal.sh'
-        helper = self.home/'.config/omarchy/hooks/lcars-vscode-terminal.py'
-        hook.parent.mkdir(parents=True, exist_ok=True)
-        hook.write_text('#!/bin/bash\nexec python3 "$HOME/.config/omarchy/hooks/lcars-vscode-terminal.py"\n')
-        helper.write_text('print("old map")\n')
+        theme = self.home/'.config/omarchy/themes/lcars'
+        (theme/'foot.ini').write_text('[colors-dark]\nalpha=0.85\n')
         record_path = self.home/'.local/state/omarchy-lcars/install.json'
         record = json.loads(record_path.read_text())
-        record['targets'].extend([
-            {'path': str(helper), 'saved': None, 'digest': m.digest(helper)},
-            {'path': str(hook), 'saved': None, 'digest': m.digest(hook)},
-        ])
+        next(e for e in record['targets'] if e['path'].endswith('/themes/lcars'))['digest'] = m.digest(theme)
         record_path.write_text(json.dumps(record))
         self.install(source=source, reinstall=True)
-        self.assertFalse(hook.exists())
-        self.assertFalse(helper.exists())
-        saved = json.loads(record_path.read_text())
-        self.assertFalse(any('lcars-vscode-terminal' in entry['path'] for entry in saved['targets']))
-    def test_reinstall_keeps_opaque_install(self):
-        source = self.source_copy()
-        self.install(source=source, transparency=False)
-        self.install(source=source, reinstall=True)
-        theme = self.home/'.config/omarchy/themes/lcars'
-        self.assertIn('alpha=1.0', (theme/'foot.ini').read_text())
-        self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-foot-opacity.sh').exists())
-        self.assertFalse((self.home/'.config/omarchy/hooks/lcars-foot-opacity.py').exists())
+        self.assertFalse((theme/'foot.ini').exists())
     def test_reinstall_keeps_theme_only(self):
         source = self.source_copy()
         self.install(source=source, theme_only=True)
@@ -459,7 +463,7 @@ class Installation(unittest.TestCase):
         colors = self.home/'.config/omarchy/themes/lcars/colors.toml'
         before_colors = colors.read_text()
         before_record = (self.home/'.local/state/omarchy-lcars/install.json').read_text()
-        (source/'colors.toml').write_text(before_colors.replace('yellow = "#e4d58b"', 'yellow = "#abcdef"'))
+        (source/'colors.toml').write_text(before_colors.replace('yellow = "#f4b965"', 'yellow = "#abcdef"'))
         with patch.object(m.subprocess, 'run', side_effect=[subprocess.CalledProcessError(1, 'omarchy'), None, None]):
             with self.assertRaises(subprocess.CalledProcessError):
                 m.install(self.home, source=source, apply=True, omarchy_path=self.platform, reinstall=True)
@@ -468,7 +472,7 @@ class Installation(unittest.TestCase):
         self.assertFalse(any(self.home.joinpath('.local/state/omarchy-lcars').glob('reinstall-*')))
         self.assertFalse(any(self.home.joinpath('.local/state/omarchy-lcars').glob('stage-*')))
     def test_reinstall_flag_rejects_option_changes(self):
-        with patch.object(sys, 'argv', ['manage.py', '--reinstall', '--no-transparency']), patch('sys.stderr', io.StringIO()):
+        with patch.object(sys, 'argv', ['manage.py', '--reinstall', '--theme-only']), patch('sys.stderr', io.StringIO()):
             with self.assertRaises(SystemExit):
                 m.main()
     def test_conflicting_plugin_is_not_overwritten(self):
@@ -478,16 +482,14 @@ class Installation(unittest.TestCase):
         with self.assertRaises(RuntimeError): self.install()
         self.assertEqual(p.read_text(), 'personal')
         self.assertEqual(json.loads(self.shell.read_text()), BASE)
-    def test_no_transparency_still_ships_hidden_stars(self):
-        self.install(transparency=False)
+    def test_install_ships_hidden_stars(self):
+        self.install()
         d = json.loads(self.shell.read_text())
         self.assertIn({'id': 'lcars.stars', 'shown': False}, d['bar']['layout']['left'])
         self.assertTrue((self.home/'.config/omarchy/plugins/lcars.stars').is_dir())
         self.assertIn('lcars.plate', [x['id'] for x in d['bar']['layout']['right']])
-        p = self.home/'.config/omarchy/themes/lcars'
-        self.assertIn('active_opacity = 1.0', (p/'hyprland.lua').read_text())
-        self.assertIn('alpha=1.0', (p/'foot.ini').read_text())
-        self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-foot-opacity.py').exists())
+        # Opacity belongs to Omarchy's Glassy toggle, not the theme.
+        self.assertNotIn('_opacity', (self.home/'.config/omarchy/themes/lcars/hyprland.lua').read_text())
     def test_theme_only_does_not_change_shell(self):
         before = self.shell.read_bytes()
         self.install(theme_only=True)

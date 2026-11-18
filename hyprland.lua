@@ -1,6 +1,8 @@
 -- LCARS geometry stays with this theme; switching themes restores defaults.
--- The stock window rule paints active windows at 98.5%. Match this theme instead.
-o.window({ tag = "default-opacity" }, { opacity = "1 0.94" })
+-- Window opacity and blur are left to Omarchy's Glassy toggle.
+-- These colors match hyprland_*_border in colors.toml.
+local active_border_color = "rgba(a5ace1ff)"
+local inactive_border_color = "rgba(3f2c53ff)"
 
 hl.config({
   general = {
@@ -8,21 +10,18 @@ hl.config({
     gaps_out = 8,
     border_size = 1,
     col = {
-      active_border = "rgba(a5ace1ff)",
-      inactive_border = "rgba(3f2c53ff)",
+      active_border = active_border_color,
+      inactive_border = inactive_border_color,
     },
   },
   decoration = {
     rounding = 10,
-    active_opacity = 1.0,
-    inactive_opacity = 0.94,
     shadow = { enabled = false },
-    blur = { enabled = false },
   },
   group = {
     col = {
-      border_active = "rgba(a5ace1ff)",
-      border_inactive = "rgba(3f2c53ff)",
+      border_active = active_border_color,
+      border_inactive = inactive_border_color,
     },
   },
 })
