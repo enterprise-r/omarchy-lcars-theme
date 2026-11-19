@@ -298,6 +298,17 @@ modelbutton:hover,
   color: {on_hover};
 }}
 
+/* Window controls hover on their round icon, as libadwaita draws them;
+   painting the button would show a square. */
+windowcontrols > button:hover:not(:disabled):not(:checked):not(.suggested-action):not(.destructive-action):not(.link) {{
+  background-color: transparent;
+}}
+
+windowcontrols > button:hover > image {{
+  background-color: {r["hover"]};
+  color: {on_hover};
+}}
+
 /* Current or chosen: green with dark text. */
 button:checked:not(.suggested-action):not(.destructive-action),
 .navigation-sidebar > row:selected {{

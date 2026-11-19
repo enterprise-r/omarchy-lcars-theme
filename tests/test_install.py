@@ -781,6 +781,13 @@ class PaletteHooks(unittest.TestCase):
     def test_firefox_button_text_stays_light(self):
         # --button-text-color is also panel menu text.
         self.assertNotIn('--button-text-color:', self.firefox.build_chrome(self.colors))
+    def test_gtk4_window_controls_hover_round(self):
+        css = self.gtk.build_css(self.colors)
+        button = css.index('windowcontrols > button:hover:not(')
+        self.assertGreater(button, css.index('/* Hover: solid amber'))
+        self.assertIn('background-color: transparent;', css[button:button + 200])
+        image = css.index('windowcontrols > button:hover > image {')
+        self.assertIn('#f0a202', css[image:image + 120])
     def test_hover_is_solid_amber_with_dark_text(self):
         gtk = self.gtk.build_css(self.colors)
         chrome = self.firefox.build_chrome(self.colors)
