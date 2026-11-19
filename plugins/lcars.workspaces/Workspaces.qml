@@ -81,9 +81,10 @@ BarWidget {
           bottomLeftRadius: topLeftRadius
           topRightRadius: segment.modelData === root.workspaceIds()[root.workspaceIds().length - 1] ? 12 : 2
           bottomRightRadius: topRightRadius
-          // Dark-R crumbs: the current one is green, the others magenta.
-          // Empty workspaces use the dim foreground; hover is amber.
-          color: segment.focused ? "#77af8a" : (segment.occupied ? "#ba9eda" : "#9385a5")
+          // Dark-R crumbs: the current one is cyan, the space in view, as the
+          // active window border; workspaces with windows are sage. Empty
+          // workspaces use the dim foreground; hover is amber.
+          color: segment.focused ? "#96c5cf" : (segment.occupied ? "#77af8a" : "#9385a5")
           border.width: (segment.tooltipHovered && !segment.focused) ? 1 : 0
           border.color: "#f0a202"
           Behavior on color { ColorAnimation { duration: 120 } }

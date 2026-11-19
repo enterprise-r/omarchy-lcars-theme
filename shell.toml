@@ -2,10 +2,11 @@
 #   hover          --ui-accent       #f0a202   (r-btn-hover)
 #   keyboard focus --ui-fg-bright    #fff3e6   (r-focus)
 #   current/chosen --ui-green        #77af8a   (r-primary)
-#   active line    --ui-border-active #ba9eda  (focused field, active card)
+#   active, in view --ui-cyan        #96c5cf   (active window, lock field)
 #   cards, panels  --ui-bg-lighter   #181820, border --ui-fg-dark #9385a5
 #   dim text       --ui-fg-dark      #9385a5   (placeholders)
-#   notices        info blue, ok green, warn amber, error red
+#   notices        info blue, ok green, warn amber, error red;
+#                  desktop notifications are amber
 # Borders and focus rings stay opaque so they clear 3:1 on the background.
 
 [bar]
@@ -57,10 +58,10 @@ border-width = "1 1 2"
 background = "#181820"
 background-alpha = 1.0
 text = "#e0e6e2"
-# An ordinary notification is an info notice.
-border = "#a5ace1"
+# Notifications ask for attention: amber, as the bar's attention state.
+border = "#f0a202"
 border-width = "3 1 1"
-countdown = "#a5ace1"
+countdown = "#f0a202"
 
 [launcher]
 background = "#181820"
@@ -85,10 +86,11 @@ border = "#9385a5"
 border-width = "4 1 1"
 scrim = "#0c040f"
 scrim-alpha = 0.55
-selected-background = "#f0a202"
+# The Omarchy menu is a list of places to go: its row is the chosen one, sage.
+selected-background = "#77af8a"
 selected-background-alpha = 1.0
 selected-text = "#0c040f"
-selected-border = "#f0a202"
+selected-border = "#77af8a"
 selected-border-alpha = 1.0
 
 [polkit]
@@ -110,7 +112,7 @@ text = "#e0e6e2"
 placeholder = "#9385a5"
 text-error = "#ec8790"
 border = "#9385a5"
-border-active = "#ba9eda"
+border-active = "#96c5cf"
 border-error = "#ec8790"
-selection = "#41285b"
+selection = "#3f2c53"
 selection-alpha = 1.0

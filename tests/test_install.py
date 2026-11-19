@@ -682,11 +682,26 @@ class PaletteHooks(unittest.TestCase):
     def test_roles_follow_showcase(self):
         r = self.gtk.roles(self.colors)
         self.assertEqual(r['bar'], '#3f2c53')
+        # Cyan is the space in view: active window, focused field.
+        self.assertEqual(r['active'], '#96c5cf')
         self.assertEqual(r['hover'], '#f0a202')
         self.assertEqual(r['primary'], '#77af8a')
         self.assertEqual(r['focus'], '#fff3e6')
         self.assertEqual(r['warn'], '#f0a202')
         self.assertEqual(r['link'], '#d2bced')
+    def test_active_and_menu_roles(self):
+        import tomllib
+        shell = tomllib.loads((ROOT/'shell.toml').read_text())
+        colors = tomllib.loads((ROOT/'colors.toml').read_text())
+        self.assertEqual(colors['hyprland_active_border'], colors['cyan'])
+        self.assertIn('rgba(96c5cfff)', (ROOT/'hyprland.lua').read_text())
+        self.assertEqual(shell['lock']['border-active'], colors['cyan'])
+        # The Omarchy menu highlight is sage; the launcher keeps amber.
+        self.assertEqual(shell['menu']['selected-background'], colors['green'])
+        self.assertEqual(shell['launcher']['selected-background'], colors['accent'])
+        workspaces = (ROOT/'plugins/lcars.workspaces/Workspaces.qml').read_text()
+        self.assertIn('segment.focused ? "#96c5cf" : (segment.occupied ? "#77af8a"', workspaces)
+        self.assertEqual(shell['notifications']['border'], colors['accent'])
     def test_text_on_fills_reads(self):
         r = self.gtk.roles(self.colors)
         for fill in ('primary', 'hover', 'error', 'warn', 'ok'):
