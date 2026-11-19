@@ -155,6 +155,7 @@ def chrome(colors: dict[str, str]) -> dict[str, str]:
     on_primary_hover = on_color(r["primary_hover"], bg, fg)
     on_warn = on_color(r["warn"], bg, fg)
     warn = r["warn"]
+    sel = colors.get("selection", line)
 
     return {
         # Code well.
@@ -168,6 +169,18 @@ def chrome(colors: dict[str, str]) -> dict[str, str]:
         "welcomePage.background": bg,
         "editor.lineHighlightBackground": card,
         "editor.lineHighlightBorder": line,
+
+        # Selection is opaque, as the showcase ::selection: the generated
+        # theme's translucent wash barely shows on the dark well. Guides and
+        # rulers use the line, so structure shows without competing with code.
+        "editor.selectionBackground": sel,
+        "editor.inactiveSelectionBackground": line,
+        "terminal.selectionBackground": sel,
+        "terminal.inactiveSelectionBackground": line,
+        "editorIndentGuide.background1": line,
+        "editorIndentGuide.activeBackground1": dim,
+        "editorWhitespace.foreground": line,
+        "editorRuler.foreground": line,
 
         # App header strip, as the GTK header bar and Firefox toolbar.
         "titleBar.activeBackground": r["bar"],

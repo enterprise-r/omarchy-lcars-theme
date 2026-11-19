@@ -222,8 +222,13 @@ class Installation(unittest.TestCase):
         self.assertEqual(workbench['editorWarning.foreground'], '#f0a202')
         self.assertEqual(workbench['editorInfo.foreground'], '#a5ace1')
         self.assertEqual(workbench['editorError.foreground'], '#ec8790')
+        # Editor selection is the opaque --ui-border fill, as the showcase ::selection.
+        self.assertEqual(workbench['editor.selectionBackground'], '#3f2c53')
+        self.assertGreaterEqual(v.contrast(workbench['editor.selectionBackground'], workbench['editor.background']), 1.5)
+        self.assertGreaterEqual(v.contrast('#e0e6e2', workbench['editor.selectionBackground']), 7)
         # No translucent washes for UI hover or selection.
         for key in ('tab.hoverBackground', 'toolbar.hoverBackground', 'list.hoverBackground',
+                    'editor.selectionBackground', 'terminal.selectionBackground',
                     'menubar.selectionBackground', 'activityBar.activeBackground', 'list.focusOutline'):
             self.assertEqual(len(workbench[key]), 7, key)
         home = self.home
@@ -273,6 +278,8 @@ class Installation(unittest.TestCase):
         self.assertIn('--urlbarview-text-color-selected: #0c040f !important;', css)
         # Selected tab is sage; destructive stays red, brighter on hover.
         self.assertIn('--tab-border-color-selected: #77af8a !important;', css)
+        self.assertIn('--tab-border-color-selected-leading: #77af8a !important;', css)
+        self.assertIn('--tab-border-color-selected-trailing: #77af8a !important;', css)
         self.assertIn('--button-background-color-destructive: #ec8790 !important;', css)
         self.assertIn('--button-background-color-destructive-hover: #ffa5ad !important;', css)
         self.assertIn('--panel-background-color: #181820 !important;', css)

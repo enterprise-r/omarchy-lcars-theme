@@ -250,6 +250,11 @@ def chrome_tokens(r: dict[str, str]) -> dict[str, str]:
         "--tab-background-color-selected": r["card"],
         "--tab-text-color-selected": r["bright"],
         "--tab-border-color-selected": r["primary"],
+        # Firefox's newer tab style (browser.nova.enabled, on by default
+        # since 158) outlines the selected tab with a violet-to-orange
+        # gradient from these two; both ends sage makes it the current mark.
+        "--tab-border-color-selected-leading": r["primary"],
+        "--tab-border-color-selected-trailing": r["primary"],
         "--sidebar-background-color": r["card"],
         "--sidebar-text-color": r["fg"],
         "--sidebar-border-color": r["edge"],
