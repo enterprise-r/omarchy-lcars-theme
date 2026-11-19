@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install, reinstall, or uninstall LCARS without replacing unrelated shell configuration."""
+"""Install, reinstall, or uninstall Dark-R without replacing unrelated shell configuration."""
 import argparse
 import copy
 import datetime
@@ -12,27 +12,30 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+THEME = 'dark-r'
+# Uninstall switches here when the theme active before install is gone.
+FALLBACK_THEME = 'tokyo-night'
+# Clock labels that belong to this theme. Uninstall replaces them with the
+# format from before install, or Omarchy's stock one.
+THEME_CLOCK_FORMATS = {"'STARDATE' ddd HH:mm", "yyyyMM.dd ddd HH:mm"}
+STOCK_CLOCK_FORMAT = 'dddd HH:mm'
 SOURCES = ['menu', 'clock', 'workspaces', 'weather', 'keyboard-layout', 'system-update', 'indicators']
 # Terminal configs are not shipped: Omarchy renders them from colors.toml.
 THEME_FILES = ['colors.toml', 'shell.toml', 'hyprland.lua', 'icons.theme']
-# Hooks earlier installs added. Reinstall removes them.
-# vscode-terminal copied Foot's swapped slots into VS Code after each theme set.
-# foot-opacity kept live Foot alpha in step; transparency is now Omarchy's Glassy toggle.
-RETIRED_HOOKS = {'lcars-vscode-terminal.py', 'lcars-vscode-terminal.sh', 'lcars-foot-opacity.py', 'lcars-foot-opacity.sh'}
-# Always shipped with the palette so GTK4/libadwaita apps can follow LCARS.
-GTK4_HOOK_PY = 'lcars-gtk4-libadwaita.py'
-GTK4_HOOK_SH = 'lcars-gtk4.sh'
+# Always shipped with the palette so GTK4/libadwaita apps can follow Dark-R.
+GTK4_HOOK_PY = 'dark-r-gtk4-libadwaita.py'
+GTK4_HOOK_SH = 'dark-r-gtk4.sh'
 # GTK3 themes (Adwaita-dark, Omagtk) compile their colors in. Firefox and the
 # GTK file chooser portal read GTK3 too.
-GTK3_HOOK_PY = 'lcars-gtk3.py'
-GTK3_HOOK_SH = 'lcars-gtk3.sh'
+GTK3_HOOK_PY = 'dark-r-gtk3.py'
+GTK3_HOOK_SH = 'dark-r-gtk3.sh'
 # Omarchy paints every VS Code surface from one background. This hook
 # rewrites the generated theme with a few distinct fills.
-VSCODE_HOOK_PY = 'lcars-vscode-surfaces.py'
-VSCODE_HOOK_SH = 'lcars-vscode-surfaces.sh'
+VSCODE_HOOK_PY = 'dark-r-vscode-surfaces.py'
+VSCODE_HOOK_SH = 'dark-r-vscode-surfaces.sh'
 # Firefox chrome follows GTK system colors, not the libadwaita palette.
-FIREFOX_HOOK_PY = 'lcars-firefox-chrome.py'
-FIREFOX_HOOK_SH = 'lcars-firefox.sh'
+FIREFOX_HOOK_PY = 'dark-r-firefox-chrome.py'
+FIREFOX_HOOK_SH = 'dark-r-firefox.sh'
 # (installed helper, theme-set wrapper, path inside this repo)
 PALETTE_HOOKS = (
     (GTK3_HOOK_PY, GTK3_HOOK_SH, 'scripts/gtk3.py'),
@@ -51,7 +54,7 @@ def write_json(path, data):
         if not dest.is_file():
             raise RuntimeError('Refusing to write through symlink: ' + str(path))
     dest.parent.mkdir(parents=True, exist_ok=True)
-    temp = dest.with_name(dest.name + '.lcars-tmp')
+    temp = dest.with_name(dest.name + '.dark-r-tmp')
     temp.write_text(json.dumps(data, indent=2) + '\n')
     temp.replace(dest)
 
@@ -178,7 +181,7 @@ def pin_workspaces(layout):
     Buttons that share that box slide it when they grow. Neighbors hang off
     the side they were already on, which is where the bar lets them grow.
     """
-    section, index = find_entry(layout, 'lcars.workspaces')
+    section, index = find_entry(layout, 'dark-r.workspaces')
     if section not in CLUSTER:
         return False
     entries = list(layout.get(section) or [])
@@ -234,14 +237,14 @@ def place_calendar_and_workspaces(bar):
     """
     placement = {'swapped': False, 'pinned': False, 'cluster': None, 'cleared_center_anchor': False}
     layout = bar['layout']
-    if find_entry(layout, 'lcars.clock')[0] is None or find_entry(layout, 'lcars.workspaces')[0] is None:
+    if find_entry(layout, 'dark-r.clock')[0] is None or find_entry(layout, 'dark-r.workspaces')[0] is None:
         return placement
-    if not exchange(layout, 'lcars.clock', 'lcars.workspaces'):
+    if not exchange(layout, 'dark-r.clock', 'dark-r.workspaces'):
         return placement
     placement['swapped'] = True
     placement['cluster'] = cluster_ids(layout)
     placement['pinned'] = pin_workspaces(layout)
-    if bar.get('centerAnchor') in ('lcars.clock', 'omarchy.clock'):
+    if bar.get('centerAnchor') in ('dark-r.clock', 'omarchy.clock'):
         # The center section is the pin. A leftover clock anchor would follow
         # the calendar after it leaves the middle.
         bar.pop('centerAnchor', None)
@@ -254,53 +257,73 @@ def patch_shell(original):
         raise RuntimeError('Unsupported shell.json format; no configuration was changed.')
     # This edition is designed for horizontal bars; do not silently move a user's bar.
     if d['bar'].get('position', 'top') not in ['top', 'bottom']:
-        raise RuntimeError('LCARS requires a top or bottom bar. Move your bar first, or use --theme-only.')
+        raise RuntimeError('Dark-R requires a top or bottom bar. Move your bar first, or use --theme-only.')
     changed = {}
     for entries in d['bar']['layout'].values():
         for entry in entries:
             source = entry.get('id', '')
             if source in ['omarchy.' + name for name in SOURCES]:
-                target = source.replace('omarchy.', 'lcars.', 1)
+                target = source.replace('omarchy.', 'dark-r.', 1)
                 changed[target] = copy.deepcopy(entry)
                 entry['id'] = target
     anchor = d['bar'].get('centerAnchor')
-    if anchor == 'omarchy.clock' and 'lcars.clock' in changed:
-        d['bar']['centerAnchor'] = 'lcars.clock'
+    if anchor == 'omarchy.clock' and 'dark-r.clock' in changed:
+        d['bar']['centerAnchor'] = 'dark-r.clock'
     placement = place_calendar_and_workspaces(d['bar'])
     # Stars stay in the layout and start hidden. A right-click on the bar shows them.
     left = d['bar']['layout'].setdefault('left', [])
-    if not any(entry.get('id') == 'lcars.stars' for entry in left):
-        left.append({'id': 'lcars.stars', 'shown': False})
+    if not any(entry.get('id') == 'dark-r.stars' for entry in left):
+        left.append({'id': 'dark-r.stars', 'shown': False})
     right = d['bar']['layout'].setdefault('right', [])
-    right.append({'id': 'lcars.plate'})
+    right.append({'id': 'dark-r.plate'})
     # Menu actions still route to the native menu; the clone only styles its bar entry.
     return d, changed, placement
 
-def unpatch_shell(current, record):
+def replaced_entry(target, record):
+    """The entry a dark-r widget replaced, also for widgets added after install."""
+    if target in record['replaced']:
+        return record['replaced'][target]
+    name = target.split('.', 1)[1] if target.startswith('dark-r.') else None
+    if name not in SOURCES:
+        return None
+    source = 'omarchy.' + name
+    layout = (record.get('before_shell') or {}).get('bar', {}).get('layout', {})
+    section, index = find_entry(layout, source) if isinstance(layout, dict) else (None, None)
+    return copy.deepcopy(layout[section][index]) if section is not None else {'id': source}
+
+def stock_clock_format(omarchy_path=None):
+    omarchy_path = omarchy_path or Path(os.environ.get('OMARCHY_PATH', '/usr/share/omarchy'))
+    try:
+        stock = json.loads((omarchy_path / 'config/omarchy/shell.json').read_text())
+        section, index = find_entry(stock['bar']['layout'], 'omarchy.clock')
+        return stock['bar']['layout'][section][index]['format']
+    except (OSError, ValueError, KeyError, TypeError):
+        return STOCK_CLOCK_FORMAT
+
+def unpatch_shell(current, record, clock_format=STOCK_CLOCK_FORMAT):
     d = copy.deepcopy(current)
     layout = d.get('bar', {}).get('layout', {})
     placement = record.get('bar_place') or {}
     # Reverse the pin before the swap, so each entry keeps edits made after install.
-    if placement.get('pinned') and placement.get('cluster'):
-        restore_cluster(layout, placement['cluster'])
-    if placement.get('swapped'):
-        exchange(layout, 'lcars.clock', 'lcars.workspaces')
+    # A bar already restored has no dark-r.workspaces; leave its order alone.
+    if find_entry(layout, 'dark-r.workspaces')[0] is not None:
+        if placement.get('pinned') and placement.get('cluster'):
+            restore_cluster(layout, placement['cluster'])
+        if placement.get('swapped'):
+            exchange(layout, 'dark-r.clock', 'dark-r.workspaces')
     for section, entries in layout.items():
         result = []
         for entry in entries:
             target = entry.get('id')
-            if target in ['lcars.stars', 'lcars.band', 'lcars.plate']:
+            if target in ['dark-r.stars', 'dark-r.band', 'dark-r.plate']:
                 continue
-            if target in record['replaced']:
+            before = replaced_entry(target, record)
+            if before is not None:
                 entry = copy.deepcopy(entry)
-                before = record['replaced'][target]
                 entry['id'] = before['id']
-                # Installs before the label was left alone wrote this prefix.
-                if target == 'lcars.clock' and entry.get('format') == "'STARDATE' ddd HH:mm":
-                    if 'format' in before:
-                        entry['format'] = before['format']
-                    else:
-                        entry.pop('format', None)
+                if entry['id'] == 'omarchy.clock' and entry.get('format') in THEME_CLOCK_FORMATS:
+                    previous = before.get('format')
+                    entry['format'] = previous if previous and previous not in THEME_CLOCK_FORMATS else clock_format
             result.append(entry)
         layout[section] = result
     before_bar = record.get('before_shell', {}).get('bar', {})
@@ -310,7 +333,7 @@ def unpatch_shell(current, record):
             d['bar']['centerAnchor'] = previous
         else:
             d['bar'].pop('centerAnchor', None)
-    elif d.get('bar', {}).get('centerAnchor') == 'lcars.clock':
+    elif d.get('bar', {}).get('centerAnchor') == 'dark-r.clock':
         d['bar']['centerAnchor'] = before_bar.get('centerAnchor', '')
     before_layout = before_bar.get('layout', {})
     for name in CLUSTER:
@@ -324,10 +347,10 @@ def check_hyprland():
         raise RuntimeError('Hyprland rejected the configuration: ' + result.stdout.strip())
 
 def paths(home):
-    return home / '.config/omarchy', home / '.local/state/omarchy-lcars'
+    return home / '.config/omarchy', home / '.local/state/omarchy-dark-r'
 
 def populate_stage(stage, source):
-    theme_stage = stage / 'lcars'
+    theme_stage = stage / THEME
     theme_stage.mkdir()
     for name in THEME_FILES:
         shutil.copy2(source / name, theme_stage / name)
@@ -397,8 +420,8 @@ def clear_firefox(home=None):
 def apply_gtk3(home=None):
     apply_hook(home, GTK3_HOOK_PY, 'gtk3.py')
 
-def apply_lcars(theme_only):
-    subprocess.run(['omarchy', 'theme', 'set', 'lcars'], check=True)
+def apply_theme(theme_only):
+    subprocess.run(['omarchy', 'theme', 'set', THEME], check=True)
     # theme-set runs the hooks; call them again so a skipped hook still paints.
     apply_gtk3()
     apply_gtk4()
@@ -412,7 +435,7 @@ def apply_lcars(theme_only):
 def managed_source(target, theme_stage, source, stage):
     if target.is_symlink():
         raise RuntimeError('Refusing to replace symlink: ' + str(target))
-    if target.name == 'lcars' and target.parent.name == 'themes':
+    if target.name == THEME and target.parent.name == 'themes':
         return theme_stage
     if '/plugins/' in str(target):
         plugin = source / 'plugins' / target.name
@@ -429,10 +452,10 @@ def install(home, source=ROOT, theme_only=False, apply=True, omarchy_path=None, 
     record_file = state / 'install.json'
     if record_file.exists():
         if not reinstall:
-            raise RuntimeError('LCARS is already installed by this installer. Uninstall before installing another version, or reinstall with --reinstall.')
+            raise RuntimeError('Dark-R is already installed by this installer. Uninstall before installing another version, or reinstall with --reinstall.')
         return refresh(home, source, apply)
     if reinstall:
-        raise RuntimeError('No managed LCARS installation found.')
+        raise RuntimeError('No managed Dark-R installation found.')
     omarchy_path = omarchy_path or Path(os.environ.get('OMARCHY_PATH', '/usr/share/omarchy'))
     if not theme_only and not (omarchy_path / 'shell/Ui/PluginBarApi.qml').exists():
         raise RuntimeError('The complete experience requires the Omarchy 4 Quickshell shell. Use --theme-only for the palette.')
@@ -451,7 +474,7 @@ def install(home, source=ROOT, theme_only=False, apply=True, omarchy_path=None, 
     stage.mkdir(parents=True)
     try:
         theme_stage = populate_stage(stage, source)
-        targets = [(theme_stage, config / 'themes/lcars')]
+        targets = [(theme_stage, config / 'themes' / THEME)]
         if not theme_only:
             for plugin in sorted((source / 'plugins').iterdir()):
                 targets.append((plugin, config / 'plugins' / plugin.name))
@@ -482,7 +505,7 @@ def install(home, source=ROOT, theme_only=False, apply=True, omarchy_path=None, 
                 write_json(shell_file, after)
             write_json(record_file, record)
             if apply:
-                apply_lcars(theme_only)
+                apply_theme(theme_only)
         except Exception:
             for entry in reversed(record['targets']):
                 target = Path(entry['path'])
@@ -501,7 +524,7 @@ def install(home, source=ROOT, theme_only=False, apply=True, omarchy_path=None, 
     return record
 
 def refresh(home, source, apply):
-    """Replace managed theme, plugin, and hook files from source, then apply LCARS.
+    """Replace managed theme, plugin, and hook files from source, then apply Dark-R.
 
     Shell layout and the options recorded at first install stay as they are.
     A managed file whose contents differ from the install record stops the refresh.
@@ -511,7 +534,7 @@ def refresh(home, source, apply):
     record_text = record_file.read_text()
     record = json.loads(record_text)
     if record.get('version') != 1 or not isinstance(record.get('targets'), list):
-        raise RuntimeError('Unsupported LCARS install record.')
+        raise RuntimeError('Unsupported Dark-R install record.')
     theme_only = bool(record.get('theme_only'))
     config = paths(home)[0]
     stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')
@@ -543,12 +566,6 @@ def refresh(home, source, apply):
             target = Path(entry['path'])
             if target.is_symlink():
                 raise RuntimeError('Refusing to replace symlink: ' + str(target))
-            if target.name in RETIRED_HOOKS:
-                if locally_edited(target, entry.get('digest')):
-                    raise RuntimeError('A managed file has local edits. Back up and restore it before reinstalling: ' + str(target))
-                checked.append((entry, target))
-                sources.append(None)
-                continue
             src = managed_source(target, theme_stage, source, stage)
             if src is None:
                 if target.exists():
@@ -558,21 +575,19 @@ def refresh(home, source, apply):
                 raise RuntimeError('A managed file has local edits. Back up and restore it before reinstalling: ' + str(target))
             checked.append((entry, target))
             sources.append(src)
-        record['targets'] = [entry for entry, target in checked if target.name not in RETIRED_HOOKS]
+        record['targets'] = [entry for entry, target in checked]
         for index, ((entry, target), src) in enumerate(zip(checked, sources)):
             snap = snapshot / str(index)
             if target.exists():
                 copy_path(target, snap)
             remove(target)
             replaced.append(index)
-            if src is None:
-                continue
             copy_path(src, target)
             restore_symlinks(snap, target)
             entry['digest'] = digest(target)
         write_json(record_file, record)
         if apply:
-            apply_lcars(theme_only)
+            apply_theme(theme_only)
     except Exception:
         for index in reversed(replaced):
             target = checked[index][1]
@@ -583,7 +598,7 @@ def refresh(home, source, apply):
         if replaced:
             record_file.write_text(record_text)
             if apply:
-                subprocess.run(['omarchy', 'theme', 'set', 'lcars'], check=False)
+                subprocess.run(['omarchy', 'theme', 'set', THEME], check=False)
                 if not theme_only:
                     subprocess.run(['omarchy', 'restart', 'shell'], check=False)
         raise
@@ -592,30 +607,41 @@ def refresh(home, source, apply):
         shutil.rmtree(snapshot, ignore_errors=True)
     return record
 
+def restore_theme(home, previous, omarchy_path=None):
+    """The theme uninstall switches to: the one active before install, if it still exists."""
+    omarchy_path = omarchy_path or Path(os.environ.get('OMARCHY_PATH', '/usr/share/omarchy'))
+    if previous and previous != THEME:
+        for root in (home / '.config/omarchy/themes', omarchy_path / 'themes'):
+            if (root / previous).is_dir():
+                return previous
+    return FALLBACK_THEME
+
 def uninstall(home, apply=True):
     config, state = paths(home)
     record_file = state / 'install.json'
     if not record_file.exists():
-        raise RuntimeError('No managed LCARS installation found.')
+        raise RuntimeError('No managed Dark-R installation found.')
     record = json.loads(record_file.read_text())
     for entry in record['targets']:
         target = Path(entry['path'])
         if locally_edited(target, entry.get('digest')):
             raise RuntimeError('A managed file has local edits. Back up and restore it before uninstalling: ' + str(target))
+    active_file = home / '.local/state/omarchy/current/theme.name'
+    active = active_file.read_text().strip() if active_file.exists() else ''
+    if apply and active == THEME:
+        # Switch while the theme files still exist: a failure here leaves the
+        # install whole, and the theme-set hooks clear themselves.
+        subprocess.run(['omarchy', 'theme', 'set', restore_theme(home, record.get('previous_theme'))], check=True)
     shell_file = config / 'shell.json'
     current = json.loads(shell_file.read_text()) if shell_file.exists() else {}
     if not record['theme_only']:
-        write_json(shell_file, unpatch_shell(current, record))
+        write_json(shell_file, unpatch_shell(current, record, stock_clock_format()))
     for entry in reversed(record['targets']):
         target = Path(entry['path'])
         remove(target)
         if entry['saved']:
             copy_path(Path(entry['saved']), target)
-    active_file = home / '.local/state/omarchy/current/theme.name'
-    active = active_file.read_text().strip() if active_file.exists() else ''
     if apply:
-        if active == 'lcars' and record['previous_theme']:
-            subprocess.run(['omarchy', 'theme', 'set', record['previous_theme']], check=True)
         clear_gtk3(home)
         clear_gtk4(home)
         clear_firefox(home)
@@ -632,7 +658,7 @@ def uninstall(home, apply=True):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--uninstall', action='store_true')
-    p.add_argument('--reinstall', action='store_true', help='refresh managed files from this checkout and apply LCARS again')
+    p.add_argument('--reinstall', action='store_true', help='refresh managed files from this checkout and apply Dark-R again')
     p.add_argument('--theme-only', action='store_true')
     p.add_argument('--no-apply', action='store_true', help='install files without reloading the live desktop')
     args = p.parse_args()
@@ -645,16 +671,16 @@ def main():
     try:
         if args.uninstall:
             record = uninstall(Path.home(), apply=not args.no_apply)
-            print('LCARS uninstalled. Backup retained:', record['backup'])
+            print('Dark-R uninstalled. Backup retained:', record['backup'])
         else:
             record = install(Path.home(), theme_only=args.theme_only, apply=not args.no_apply, reinstall=args.reinstall)
             if args.reinstall:
-                print('LCARS reinstalled. Restart applications if they do not live-reload their theme.')
+                print('Dark-R reinstalled. Restart applications if they do not live-reload their theme.')
             else:
-                print('LCARS installed. Backup:', record['backup'])
+                print('Dark-R installed. Backup:', record['backup'])
                 print('Existing custom widgets were preserved. Restart applications if they do not live-reload their theme.')
     except (RuntimeError, OSError, ValueError, subprocess.CalledProcessError) as exc:
-        print('LCARS:', exc, file=sys.stderr)
+        print('Dark-R:', exc, file=sys.stderr)
         return 1
     return 0
 

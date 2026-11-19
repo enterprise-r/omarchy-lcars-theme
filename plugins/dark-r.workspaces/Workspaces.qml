@@ -7,7 +7,7 @@ import qs.Ui
 BarWidget {
   id: root
   moduleName: "omarchy.workspaces"
-  readonly property bool lcars: Color.background.toString() === "#0c040f"
+  readonly property bool darkR: Color.background.toString() === "#0c040f"
 
   function workspaceById(id) {
     var values = Hyprland.workspaces.values
@@ -46,7 +46,7 @@ BarWidget {
     anchors.fill: parent
     anchors.rightMargin: root.trailingGap
     columns: root.vertical ? 1 : root.workspaceIds().length
-    columnSpacing: root.vertical ? 0 : Style.space(root.lcars ? 3 : 1)
+    columnSpacing: root.vertical ? 0 : Style.space(root.darkR ? 3 : 1)
     rowSpacing: root.vertical ? Style.space(2) : 0
 
     Repeater {
@@ -61,17 +61,17 @@ BarWidget {
         readonly property bool focused: Hyprland.focusedWorkspace !== null && Hyprland.focusedWorkspace.id === modelData
 
         bar: root.bar
-        text: root.lcars ? String(modelData).padStart(2, "0") : (focused ? "\uDB85\uDCFB" : (modelData === 10 ? "0" : String(modelData)))
-        foreground: root.lcars ? "#0c040f" : (root.bar ? root.bar.barForeground : Color.foreground)
+        text: root.darkR ? String(modelData).padStart(2, "0") : (focused ? "\uDB85\uDCFB" : (modelData === 10 ? "0" : String(modelData)))
+        foreground: root.darkR ? "#0c040f" : (root.bar ? root.bar.barForeground : Color.foreground)
         tooltipText: "Workspace " + modelData + (occupied ? " · " + workspace.toplevels.values.length + " windows" : " · empty")
-        opacity: root.lcars ? 1 : (occupied || focused ? 1 : 0.5)
+        opacity: root.darkR ? 1 : (occupied || focused ? 1 : 0.5)
         horizontalMargin: 6
         verticalPadding: 6
-        fixedWidth: root.vertical ? root.barSize : Style.space(root.lcars ? 32 : 20)
+        fixedWidth: root.vertical ? root.barSize : Style.space(root.darkR ? 32 : 20)
         fixedHeight: root.barSize
         onPressed: function() { root.focusWorkspace(modelData) }
         Rectangle {
-          visible: root.lcars
+          visible: root.darkR
           z: -1
           anchors.horizontalCenter: parent.horizontalCenter
           anchors.top: parent.top

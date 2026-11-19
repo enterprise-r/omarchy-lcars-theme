@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "id": "lcars.band",
-  "name": "LCARS Band",
+  "id": "dark-r.band",
+  "name": "Dark-R Band",
   "version": "1.0.0",
   "author": "Yoav",
-  "description": "A compact structural endcap for the LCARS theme",
+  "description": "A compact structural endcap for the Dark-R theme",
   "kinds": [
     "bar-widget"
   ],
@@ -12,7 +12,7 @@
     "barWidget": "Band.qml"
   },
   "barWidget": {
-    "displayName": "LCARS Band",
+    "displayName": "Dark-R Band",
     "category": "Layout",
     "allowMultiple": true,
     "defaultSection": "right"

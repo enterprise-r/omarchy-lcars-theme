@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "lcars.indicators",
-  "name": "LCARS Indicators",
+  "id": "dark-r.indicators",
+  "name": "Dark-R Indicators",
   "version": "1.0.0",
   "author": "Omarchy",
   "description": "Manual state indicators",
@@ -12,7 +12,7 @@
     "barWidget": "Indicators.qml"
   },
   "barWidget": {
-    "displayName": "LCARS Indicators",
+    "displayName": "Dark-R Indicators",
     "description": "Manual state indicators",
     "category": "Status",
     "allowMultiple": true,

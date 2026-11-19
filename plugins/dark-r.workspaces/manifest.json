@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "lcars.workspaces",
-  "name": "LCARS Workspaces",
+  "id": "dark-r.workspaces",
+  "name": "Dark-R Workspaces",
   "version": "1.0.0",
   "author": "Omarchy",
   "description": "Workspace number indicators",
@@ -12,7 +12,7 @@
     "barWidget": "Workspaces.qml"
   },
   "barWidget": {
-    "displayName": "LCARS Workspaces",
+    "displayName": "Dark-R Workspaces",
     "description": "Workspace number indicators",
     "category": "Compositor",
     "allowMultiple": false

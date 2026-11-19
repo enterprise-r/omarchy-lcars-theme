@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "lcars.menu",
-  "name": "LCARS Menu",
+  "id": "dark-r.menu",
+  "name": "Dark-R Menu",
   "version": "1.0.0",
   "author": "Omarchy",
   "description": "Quickshell-powered Omarchy command menu",
@@ -12,7 +12,7 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "LCARS Menu",
+    "displayName": "Dark-R Menu",
     "description": "Launches the Omarchy menu",
     "category": "Compositor",
     "allowMultiple": false

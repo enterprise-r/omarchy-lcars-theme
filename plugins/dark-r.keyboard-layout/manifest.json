@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "lcars.keyboard-layout",
-  "name": "LCARS Keyboard layout",
+  "id": "dark-r.keyboard-layout",
+  "name": "Dark-R Keyboard layout",
   "version": "1.0.0",
   "author": "Omarchy",
   "description": "Current xkb layout, click cycles",
@@ -12,7 +12,7 @@
     "barWidget": "KeyboardLayout.qml"
   },
   "barWidget": {
-    "displayName": "LCARS Keyboard layout",
+    "displayName": "Dark-R Keyboard layout",
     "description": "Current xkb layout, click cycles",
     "category": "Compositor",
     "allowMultiple": false

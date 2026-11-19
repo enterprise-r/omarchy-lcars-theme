@@ -13,7 +13,7 @@ import "Model.js" as Model
 BarWidget {
   id: root
   moduleName: "omarchy.clock"
-  readonly property bool lcars: Color.background.toString() === "#0c040f"
+  readonly property bool darkR: Color.background.toString() === "#0c040f"
 
   property date displayDate: clock.date
 
@@ -144,13 +144,13 @@ BarWidget {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: root.vertical ? "" : (root.lcars ? root.displayText.toUpperCase() : root.displayText)
-    foreground: root.lcars ? "#0c040f" : (root.bar ? root.bar.barForeground : Color.foreground)
+    text: root.vertical ? "" : (root.darkR ? root.displayText.toUpperCase() : root.displayText)
+    foreground: root.darkR ? "#0c040f" : (root.bar ? root.bar.barForeground : Color.foreground)
     labelVisible: !root.vertical
     hasVisualContent: root.vertical ? root.verticalLines.length > 0 : text !== ""
     fixedHeight: root.vertical ? root.verticalLines.length * Style.bar.iconSlot : -1
     // Clears the capsule ends. Plate height and radius match the menu pill.
-    horizontalMargin: root.lcars ? 16 : 8.75
+    horizontalMargin: root.darkR ? 16 : 8.75
     verticalPadding: 8.75
 
     onPressed: function(b) {
@@ -160,7 +160,7 @@ BarWidget {
     }
 
     Rectangle {
-      visible: root.lcars && !root.vertical
+      visible: root.darkR && !root.vertical
       z: -1
       anchors.left: parent.left
       anchors.right: parent.right

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "lcars.plate",
-  "name": "LCARS Plate",
+  "id": "dark-r.plate",
+  "name": "Dark-R Plate",
   "version": "1.0.0",
   "author": "Yoav",
   "description": "Background plate under the right side of the bar",
@@ -12,7 +12,7 @@
     "barWidget": "Plate.qml"
   },
   "barWidget": {
-    "displayName": "LCARS Plate",
+    "displayName": "Dark-R Plate",
     "category": "Layout",
     "allowMultiple": false,
     "defaultSection": "right"

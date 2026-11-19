@@ -5,7 +5,7 @@ import qs.Ui
 
 BarWidget {
   id: root
-  readonly property bool lcars: Color.background.toString() === "#0c040f"
+  readonly property bool darkR: Color.background.toString() === "#0c040f"
   readonly property var hostWindow: root.QsWindow.window
   // The layout entry loads this decoration but occupies no bar space.
   implicitWidth: 0
@@ -13,7 +13,7 @@ BarWidget {
   property real elapsed: 0
   // Off until a right-click. The choice used to be an install flag.
   readonly property bool shown: setting("shown", false) === true
-  readonly property string starsId: moduleName !== "" ? moduleName : "lcars.stars"
+  readonly property string starsId: moduleName !== "" ? moduleName : "dark-r.stars"
   // Plugin widgets see a facade, not the bar. Hiding parks the surface
   // off-screen and leaves the window visible, so this is the stop signal.
   readonly property bool barParked: {
@@ -21,7 +21,7 @@ BarWidget {
     var state = shell ? shell.bar : null
     return !!(state && state.barHidden === true)
   }
-  readonly property bool animating: root.lcars && root.shown && !root.vertical
+  readonly property bool animating: root.darkR && root.shown && !root.vertical
       && root.visible && !root.barParked
       && root.barStrip !== null && root.hostWindow !== null && root.hostWindow.visible
 
@@ -66,7 +66,7 @@ BarWidget {
   Timer {
     interval: 200
     repeat: true
-    running: root.lcars && root.barStrip === null
+    running: root.darkR && root.barStrip === null
     triggeredOnStart: true
     property int ticks: 0
     onTriggered: {
@@ -97,7 +97,7 @@ BarWidget {
     parent: root.barStrip ? root.barStrip : root
     anchors.fill: parent
     z: -9
-    enabled: root.lcars && !root.vertical && root.barStrip !== null
+    enabled: root.darkR && !root.vertical && root.barStrip !== null
     acceptedButtons: Qt.RightButton
     onClicked: root.toggleStars()
   }

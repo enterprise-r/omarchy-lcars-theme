@@ -5,7 +5,7 @@ import qs.Ui
 BarWidget {
   id: root
   moduleName: "omarchy.weather"
-  readonly property bool lcars: Color.background.toString() === "#0c040f"
+  readonly property bool darkR: Color.background.toString() === "#0c040f"
 
   function injectPanel() {
     var target = panelLoader.item

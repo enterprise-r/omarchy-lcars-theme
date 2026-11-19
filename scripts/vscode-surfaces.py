@@ -22,7 +22,7 @@ from pathlib import Path
 import subprocess
 import tomllib
 
-THEME_NAME = "lcars"
+THEME_NAME = "dark-r"
 THEME_FILE = "vscode-theme.json"
 
 
@@ -427,7 +427,7 @@ def apply(
 
     data["colors"] = workbench
     text = json.dumps(data, indent=4) + "\n"
-    tmp = theme_path.with_name(theme_path.name + ".lcars-tmp")
+    tmp = theme_path.with_name(theme_path.name + ".dark-r-tmp")
     tmp.write_text(text)
     tmp.replace(theme_path)
     if refresh:
@@ -437,7 +437,7 @@ def apply(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--force", action="store_true", help="apply even when the active theme is not LCARS")
+    parser.add_argument("--force", action="store_true", help="apply even when the active theme is not Dark-R")
     parser.add_argument("--colors", type=Path, help="colors.toml to read (implies --force)")
     parser.add_argument("--theme", type=Path, help="vscode-theme.json to patch")
     parser.add_argument("--home", type=Path, default=Path.home())

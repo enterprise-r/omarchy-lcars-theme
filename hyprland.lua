@@ -1,4 +1,4 @@
--- LCARS geometry stays with this theme; switching themes restores defaults.
+-- Dark-R geometry stays with this theme; switching themes restores defaults.
 -- Window opacity and blur are left to Omarchy's Glassy toggle.
 -- Colors follow Dark-R: cyan marks the active window (the space in view),
 -- the slate --ui-border the others, as in colors.toml.

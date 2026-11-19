@@ -5,7 +5,7 @@ import qs.Commons
 BarWidget {
   id: root
   moduleName: "omarchy.menu"
-  readonly property bool lcars: Color.background.toString() === "#0c040f"
+  readonly property bool darkR: Color.background.toString() === "#0c040f"
   // LeftModules insets the group by space(8). Cancel that so the pill meets
   // the screen edge. sideGap stays between this pill and the next control.
   readonly property int sideGap: Style.space(3)
@@ -17,20 +17,20 @@ BarWidget {
   WidgetButton {
     id: button
     anchors.fill: parent
-    anchors.leftMargin: root.lcars ? -root.edgeInset : 0
-    anchors.rightMargin: root.lcars ? root.sideGap : 0
+    anchors.leftMargin: root.darkR ? -root.edgeInset : 0
+    anchors.rightMargin: root.darkR ? root.sideGap : 0
     bar: root.bar
     text: "\ue900"
     fontFamily: "omarchy"
-    fontSize: root.lcars ? 18 : Style.font.body
-    foreground: root.lcars ? "#0c040f" : (root.bar ? root.bar.barForeground : Color.foreground)
-    fixedWidth: root.lcars ? Style.space(32) - root.edgeInset + root.sideGap * 2 : -1
+    fontSize: root.darkR ? 18 : Style.font.body
+    foreground: root.darkR ? "#0c040f" : (root.bar ? root.bar.barForeground : Color.foreground)
+    fixedWidth: root.darkR ? Style.space(32) - root.edgeInset + root.sideGap * 2 : -1
     // The stock label centers on the full button, below this shorter pill.
     // The glyph also leans right in its em box.
-    labelVisible: !root.lcars
+    labelVisible: !root.darkR
     Rectangle {
       id: pill
-      visible: root.lcars
+      visible: root.darkR
       z: -1
       anchors.left: parent.left
       anchors.right: parent.right
@@ -40,7 +40,7 @@ BarWidget {
       color: "#77af8a"
     }
     Text {
-      visible: root.lcars
+      visible: root.darkR
       anchors.centerIn: pill
       anchors.horizontalCenterOffset: -0.5
       text: "\ue900"

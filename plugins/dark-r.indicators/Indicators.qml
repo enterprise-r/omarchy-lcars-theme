@@ -7,7 +7,7 @@ import qs.Ui
 BarWidget {
   id: root
   moduleName: "omarchy.indicators"
-  readonly property bool lcars: Color.background.toString() === "#0c040f"
+  readonly property bool darkR: Color.background.toString() === "#0c040f"
 
   readonly property var defaultIndicatorEntries: [ "Dictation", "ScreenRecording", "Reminder", "NightLight", "Dnd", "StayAwake" ]
   readonly property var indicatorEntries: indicatorEntriesFromSettings(settings)
@@ -475,7 +475,7 @@ BarWidget {
       target: indicatorSource.item
       property: "foreground"
       when: indicatorSource.item !== null
-      value: (root.lcars && indicatorSource.item && indicatorSource.item.effectiveActive)
+      value: (root.darkR && indicatorSource.item && indicatorSource.item.effectiveActive)
         ? "#77af8a"
         : (root.bar ? root.bar.barForeground : Color.foreground)
     }
@@ -483,7 +483,7 @@ BarWidget {
     Binding {
       target: indicatorSource.item
       property: "opacity"
-      when: indicatorSource.item !== null && root.lcars
+      when: indicatorSource.item !== null && root.darkR
       value: {
         var item = indicatorSource.item
         if (!item || item.belongsInBlock !== true) return 0

@@ -7,7 +7,7 @@ import qs.Ui
 // a binding, and the row's anchors move it once its width has already settled.
 BarWidget {
   id: root
-  readonly property bool lcars: Color.background.toString() === "#0c040f"
+  readonly property bool darkR: Color.background.toString() === "#0c040f"
   // A transparent bar samples the wallpaper and, on a bright field, switches
   // its ink to the near-black contrast color. This plate is opaque and would
   // otherwise be that same black under the dark ink. Match the ink: bright
@@ -120,7 +120,7 @@ BarWidget {
   function place() {
     var row = root.hostRow
     var surface = root.findSurface(row)
-    if (!surface || !root.lcars || root.vertical) {
+    if (!surface || !root.darkR || root.vertical) {
       plateRect.width = 0
       return
     }
@@ -192,7 +192,7 @@ BarWidget {
   Timer {
     interval: 200
     repeat: true
-    running: root.lcars
+    running: root.darkR
     triggeredOnStart: true
     property int ticks: 0
     onTriggered: {
@@ -207,7 +207,7 @@ BarWidget {
   Rectangle {
     id: plateRect
     z: -1
-    visible: root.lcars && !root.vertical && width > 0
+    visible: root.darkR && !root.vertical && width > 0
     radius: 12
     color: root.plateColor
   }

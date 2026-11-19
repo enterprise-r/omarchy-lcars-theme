@@ -201,7 +201,7 @@ def render(colors):
         return max(min_w, round(board.tracked_width(label, font, tracking) / SCALE + 160))
 
     accent_code = hex_label(colors["accent"])
-    left_w = pill_width("LCARS", 54, 10, 340)
+    left_w = pill_width("DARK-R", 54, 10, 340)
     center_w = pill_width("COLOR INDEX", 48, 6, 620)
     right_w = pill_width(accent_code, 44, 2, 420)
     hx, hy, hw, hh = header
@@ -209,7 +209,7 @@ def render(colors):
     right_box = (hx + hw - right_w, hy, right_w, hh)
     center_box = (hx + (hw - center_w) / 2, hy, center_w, hh)
 
-    board.header_pill(left_box, colors["bright_green"], "LCARS", 54, 10)
+    board.header_pill(left_box, colors["bright_green"], "DARK-R", 54, 10)
     board.header_pill(center_box, colors["magenta"], "COLOR INDEX", 48, 6)
     board.header_pill(right_box, colors["accent"], accent_code, 44, 2)
 
@@ -262,8 +262,8 @@ def render(colors):
         board.rounded((x, panel_y, col_w, panel_h), 28, fill, colors["hyprland_active_border"], 4)
         pad = 36
         title_y = panel_y + 34
-        board.text((x + pad, title_y), "LCARS", title_font, colors["accent"], 3, "lt")
-        brand_w = board.tracked_width("LCARS", title_font, 3) / SCALE
+        board.text((x + pad, title_y), "DARK-R", title_font, colors["accent"], 3, "lt")
+        brand_w = board.tracked_width("DARK-R", title_font, 3) / SCALE
         board.text((x + pad + brand_w + 16, title_y), "/", title_font, colors["muted"], 0, "lt")
         board.text(
             (x + pad + brand_w + 40, title_y),

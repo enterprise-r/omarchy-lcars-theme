@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "lcars.system-update",
-  "name": "LCARS Omarchy update",
+  "id": "dark-r.system-update",
+  "name": "Dark-R Omarchy update",
   "version": "1.0.0",
   "author": "Omarchy",
   "description": "Indicates available Omarchy updates",
@@ -12,7 +12,7 @@
     "barWidget": "SystemUpdate.qml"
   },
   "barWidget": {
-    "displayName": "LCARS Omarchy update",
+    "displayName": "Dark-R Omarchy update",
     "description": "Indicates available Omarchy updates",
     "category": "System",
     "allowMultiple": false

@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "id": "lcars.stars",
-  "name": "LCARS Stars",
+  "id": "dark-r.stars",
+  "name": "Dark-R Stars",
   "version": "1.0.0",
   "author": "Yoav",
-  "description": "Full-width slow star trails behind the LCARS bar controls",
+  "description": "Full-width slow star trails behind the Dark-R bar controls",
   "kinds": [
     "bar-widget"
   ],
@@ -12,7 +12,7 @@
     "barWidget": "Stars.qml"
   },
   "barWidget": {
-    "displayName": "LCARS Stars",
+    "displayName": "Dark-R Stars",
     "category": "Layout",
     "allowMultiple": false,
     "defaultSection": "left"
