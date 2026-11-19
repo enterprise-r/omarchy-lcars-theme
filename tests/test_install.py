@@ -45,6 +45,7 @@ class Installation(unittest.TestCase):
             shutil.copy2(ROOT/name, source/name)
         shutil.copytree(ROOT/'backgrounds', source/'backgrounds')
         shutil.copytree(ROOT/'plugins', source/'plugins')
+        shutil.copy2(ROOT/'scripts'/'gtk3.py', source/'scripts'/'gtk3.py')
         shutil.copy2(ROOT/'scripts'/'gtk4-libadwaita.py', source/'scripts'/'gtk4-libadwaita.py')
         shutil.copy2(ROOT/'scripts'/'vscode-surfaces.py', source/'scripts'/'vscode-surfaces.py')
         shutil.copy2(ROOT/'scripts'/'firefox-chrome.py', source/'scripts'/'firefox-chrome.py')
@@ -72,6 +73,12 @@ class Installation(unittest.TestCase):
         self.assertFalse((self.home/'.config/omarchy/hooks/lcars-vscode-surfaces.py').exists())
         self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/lcars-firefox.sh').exists())
         self.assertFalse((self.home/'.config/omarchy/hooks/lcars-firefox-chrome.py').exists())
+        self.assertFalse((self.home/'.config/omarchy/hooks/lcars-gtk3.py').exists())
+    def test_gtk3_hook_installs(self):
+        self.install(theme_only=True)
+        hook = self.home/'.config/omarchy/hooks/theme-set.d/lcars-gtk3.sh'
+        self.assertIn('lcars-gtk3.py', hook.read_text())
+        self.assertTrue((self.home/'.config/omarchy/hooks/lcars-gtk3.py').is_file())
     def test_reinstall_adds_gtk4_hooks_to_old_record(self):
         source = self.source_copy()
         self.install(source=source)
@@ -112,29 +119,36 @@ class Installation(unittest.TestCase):
         g = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(g)
         css = g.build_css(g.load_colors(ROOT/'colors.toml'))
-        self.assertIn('@define-color accent_bg_color #f0a202;', css)
-        self.assertIn('@define-color accent_color #f0a202;', css)
+        # Chosen/checked is green on the showcase; amber is only hover and warn.
+        self.assertIn('@define-color accent_bg_color #77af8a;', css)
+        self.assertIn('@define-color accent_color #77af8a;', css)
         self.assertIn('--window-bg-color: #0c040f;', css)
         self.assertIn('--view-bg-color: #0c040f;', css)
         self.assertIn('--accent-fg-color: #0c040f;', css)
-        # Accent is the palette accent. No extra widget rules.
-        self.assertIn('--accent-color: #f0a202;', css)
-        self.assertIn('--accent-bg-color: #f0a202;', css)
+        self.assertIn('--accent-color: #77af8a;', css)
+        self.assertIn('--accent-bg-color: #77af8a;', css)
         self.assertNotIn('oklab(', css)
-        self.assertIn('--headerbar-bg-color: #181820;', css)
+        self.assertIn('--headerbar-bg-color: #3f2c53;', css)
         self.assertIn('--card-bg-color: #181820;', css)
         self.assertIn('--sidebar-bg-color: #181820;', css)
         self.assertIn('--popover-bg-color: #181820;', css)
-        self.assertIn('--headerbar-border-color: #f0a202;', css)
-        self.assertIn('--warning-bg-color: #e4d58b;', css)
+        self.assertIn('--headerbar-border-color: #9385a5;', css)
+        self.assertIn('--warning-bg-color: #f0a202;', css)
         self.assertIn('--success-bg-color: #77af8a;', css)
-        self.assertIn('@define-color theme_selected_bg_color #41285b;', css)
-        self.assertIn('@define-color link_color #f0a202;', css)
-        self.assertIn('@define-color borders #f0a202;', css)
-        self.assertNotIn('outline-color: #', css)
-        self.assertNotIn('row:selected', css)
+        # Selection as the showcase ::selection: --ui-border under fg-bright.
+        self.assertIn('@define-color theme_selected_bg_color #3f2c53;', css)
+        self.assertIn('@define-color theme_selected_fg_color #fff3e6;', css)
+        self.assertIn('@define-color link_color #d2bced;', css)
+        self.assertIn('@define-color borders #9385a5;', css)
+        # Rules carry the roles the variables cannot.
+        self.assertIn('outline-color: #fff3e6;', css)
+        self.assertIn('.navigation-sidebar > row:selected', css)
         self.assertNotIn('#a5ace1', css)
         self.assertIn('@define-color insensitive_fg_color #9385a5;', css)
+        # Link buttons stay links on hover; destructive stays red.
+        self.assertIn(':not(.destructive-action):not(.link),', css)
+        self.assertIn('button.destructive-action:hover:not(:disabled) {\n  background-color: #ffa5ad;', css)
+        self.assertIn('button.suggested-action:hover:not(:disabled) {\n  background-color: #9add6d;', css)
         home = self.home
         (home/'.local/state/omarchy/current').mkdir(parents=True, exist_ok=True)
         (home/'.local/state/omarchy/current/theme.name').write_text('lcars\n')
@@ -166,43 +180,52 @@ class Installation(unittest.TestCase):
         v = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(v)
         colors = v.load_colors(ROOT/'colors.toml')
-        role = v.surfaces(colors)
-        self.assertEqual(role['editor'], '#0c040f')
-        self.assertEqual(role['sidebar'], '#181820')
-        self.assertEqual(role['panel'], '#181820')
-        self.assertEqual(role['frame'], '#181820')
-        self.assertEqual(role['field'], '#181820')
-        self.assertEqual(role['selection'], '#41285b')
-        self.assertEqual(role['rule'], '#3f2c53')
-        self.assertEqual(role['edge'], '#9385a5')
-        self.assertEqual(role['active_edge'], '#ba9eda')
-        self.assertEqual(role['current'], '#77af8a')
-        self.assertEqual(role['link'], '#d2bced')
-        self.assertEqual(role['placeholder'], '#9385a5')
-        # The code well stays darker than the card so the editor does not
-        # blend into the file tree.
-        self.assertGreater(v.luma(role['sidebar']) - v.luma(role['editor']), 12)
         workbench = v.chrome(colors)
-        self.assertNotEqual(workbench['editor.background'], workbench['sideBar.background'])
-        self.assertEqual(workbench['sideBar.background'], workbench['activityBar.background'])
-        self.assertEqual(workbench['activityBar.border'], '#3f2c53')
-        self.assertNotEqual(workbench['editor.background'], workbench['panel.background'])
-        self.assertNotEqual(workbench['tab.activeBackground'], workbench['tab.inactiveBackground'])
+        # Regions: code well on background, chrome on the card, header strip.
+        self.assertEqual(workbench['editor.background'], '#0c040f')
+        self.assertEqual(workbench['sideBar.background'], '#181820')
+        self.assertEqual(workbench['activityBar.background'], '#181820')
+        self.assertEqual(workbench['panel.background'], '#181820')
+        self.assertEqual(workbench['titleBar.activeBackground'], '#3f2c53')
         self.assertEqual(workbench['tab.activeBackground'], workbench['editor.background'])
+        self.assertNotEqual(workbench['tab.activeBackground'], workbench['tab.inactiveBackground'])
+        # Separators are quiet; magenta is not a split line.
+        self.assertEqual(workbench['editorGroup.border'], '#3f2c53')
+        self.assertEqual(workbench['activityBar.border'], '#3f2c53')
+        # Current is sage.
         self.assertEqual(workbench['tab.activeForeground'], '#77af8a')
-        self.assertEqual(workbench['tab.hoverForeground'], colors['accent'])
+        self.assertEqual(workbench['tab.activeBorderTop'], '#77af8a')
         self.assertEqual(workbench['activityBar.foreground'], '#77af8a')
-        self.assertEqual(workbench['activityBar.inactiveForeground'], '#b6c1cc')
-        self.assertEqual(workbench['focusBorder'], '#fff3e6')
-        self.assertEqual(workbench['textLink.foreground'], '#d2bced')
-        self.assertEqual(workbench['input.placeholderForeground'], '#9385a5')
-        self.assertEqual(workbench['list.activeSelectionBackground'], '#41285b')
+        self.assertEqual(workbench['list.activeSelectionForeground'], '#77af8a')
+        self.assertEqual(workbench['button.background'], '#77af8a')
+        # Hover and keyboard rows are solid amber with dark text.
+        for key in ('tab.hoverBackground', 'quickInputList.focusBackground', 'menu.selectionBackground',
+                    'menubar.selectionBackground', 'editorSuggestWidget.selectedBackground',
+                    'statusBarItem.hoverBackground', 'list.focusOutline'):
+            self.assertEqual(workbench[key], '#f0a202', key)
+        for key in ('tab.hoverForeground', 'quickInputList.focusForeground', 'menu.selectionForeground',
+                    'editorSuggestWidget.selectedForeground', 'list.focusHighlightForeground',
+                    'editorSuggestWidget.focusHighlightForeground'):
+            self.assertEqual(workbench[key], '#0c040f', key)
+        # Lists keep amber matches readable, so their fills stay quiet.
+        self.assertEqual(workbench['list.highlightForeground'], '#f0a202')
         self.assertEqual(workbench['list.hoverBackground'], '#3f2c53')
-        self.assertEqual(workbench['editorWidget.border'], '#9385a5')
-        self.assertEqual(workbench['editorGroup.border'], '#ba9eda')
-        self.assertNotIn('#23232f', workbench.values())
-        self.assertNotIn('#2d2d3c', workbench.values())
-        self.assertNotIn('#a5ace1', workbench.values())
+        self.assertGreaterEqual(v.contrast(workbench['list.highlightForeground'], workbench['list.hoverBackground']), 4.5)
+        self.assertGreaterEqual(v.contrast(workbench['list.activeSelectionForeground'], workbench['list.activeSelectionBackground']), 4.5)
+        # Focus, dim, cards, links, notices.
+        self.assertEqual(workbench['focusBorder'], '#fff3e6')
+        for key in ('input.border', 'dropdown.border', 'checkbox.border', 'editorWidget.border',
+                    'notifications.border', 'widget.border', 'descriptionForeground', 'input.placeholderForeground'):
+            self.assertEqual(workbench[key], '#9385a5', key)
+        self.assertEqual(workbench['textLink.foreground'], '#d2bced')
+        self.assertEqual(workbench['textLink.activeForeground'], '#efe3a6')
+        self.assertEqual(workbench['editorWarning.foreground'], '#f0a202')
+        self.assertEqual(workbench['editorInfo.foreground'], '#a5ace1')
+        self.assertEqual(workbench['editorError.foreground'], '#ec8790')
+        # No translucent washes for UI hover or selection.
+        for key in ('tab.hoverBackground', 'toolbar.hoverBackground', 'list.hoverBackground',
+                    'menubar.selectionBackground', 'activityBar.activeBackground', 'list.focusOutline'):
+            self.assertEqual(len(workbench[key]), 7, key)
         home = self.home
         state = home/'.local/state/omarchy/current'
         state.mkdir(parents=True, exist_ok=True)
@@ -226,11 +249,11 @@ class Installation(unittest.TestCase):
         patched = json.loads((theme/'vscode-theme.json').read_text())
         self.assertEqual(patched['tokenColors'], [{'name': 'Comment'}])
         self.assertEqual(patched['colors']['editor.background'], '#0c040f')
-        self.assertEqual(patched['colors']['sideBar.background'], role['sidebar'])
-        self.assertEqual(patched['colors']['activityBar.background'], role['frame'])
-        self.assertEqual(patched['colors']['panel.background'], role['panel'])
-        self.assertEqual(patched['colors']['tab.inactiveBackground'], role['sidebar'])
-        self.assertNotEqual(patched['colors']['list.activeSelectionBackground'], patched['colors']['sideBar.background'])
+        self.assertEqual(patched['colors']['sideBar.background'], workbench['sideBar.background'])
+        self.assertEqual(patched['colors']['activityBar.background'], workbench['activityBar.background'])
+        self.assertEqual(patched['colors']['panel.background'], workbench['panel.background'])
+        self.assertEqual(patched['colors']['tab.inactiveBackground'], workbench['tab.inactiveBackground'])
+        self.assertEqual(patched['colors']['titleBar.activeBackground'], '#3f2c53')
         self.assertEqual(v.apply(home, refresh=False), 0)
         (state/'theme.name').write_text('nord\n')
         (theme/'vscode-theme.json').write_text(json.dumps({'colors': {'editor.background': '#111111'}}))
@@ -242,16 +265,18 @@ class Installation(unittest.TestCase):
         f = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(f)
         css = f.build_chrome(f.load_colors(ROOT/'colors.toml'))
-        self.assertIn('--toolbar-background-color: #0c040f;', css)
-        self.assertIn('--color-accent-primary: #f0a202;', css)
-        self.assertIn('--link-color: #f0a202;', css)
-        self.assertIn('--button-background-color: transparent;', css)
-        self.assertIn('--urlbarview-background-color-selected: #41285b;', css)
-        self.assertIn('--panel-background-color: #181820;', css)
-        self.assertNotIn('!important', css)
+        self.assertIn('--toolbar-background-color: #3f2c53 !important;', css)
+        self.assertIn('--color-accent-primary: #77af8a !important;', css)
+        self.assertIn('--link-color: #d2bced !important;', css)
+        self.assertIn('--focus-outline-color: #fff3e6 !important;', css)
+        self.assertIn('--urlbarview-background-color-selected: #f0a202 !important;', css)
+        self.assertIn('--urlbarview-text-color-selected: #0c040f !important;', css)
+        # Selected tab is sage; destructive stays red, brighter on hover.
+        self.assertIn('--tab-border-color-selected: #77af8a !important;', css)
+        self.assertIn('--button-background-color-destructive: #ec8790 !important;', css)
+        self.assertIn('--button-background-color-destructive-hover: #ffa5ad !important;', css)
+        self.assertIn('--panel-background-color: #181820 !important;', css)
         self.assertNotIn('.tab-background', css)
-        self.assertNotIn('#77af8a', css)
-        self.assertNotIn('#a5ace1', css)
         home = self.home
         state = home/'.local/state/omarchy/current'
         state.mkdir(parents=True, exist_ok=True)
@@ -276,8 +301,8 @@ class Installation(unittest.TestCase):
         self.assertIn('omarchy-lcars.css', chrome)
         sheet = (profile/'chrome/omarchy-lcars.css').read_text()
         self.assertIn('#f0a202', sheet)
-        self.assertIn('#0c040f', sheet)
-        self.assertNotIn('#77af8a', sheet)
+        self.assertIn('#3f2c53', sheet)
+        self.assertIn('#77af8a', sheet)
         self.assertFalse((webapp/'chrome/omarchy-lcars.css').exists())
         prefs = (profile/'user.js').read_text()
         self.assertIn('toolkit.legacyUserProfileCustomizations.stylesheets', prefs)
@@ -587,5 +612,175 @@ class Installation(unittest.TestCase):
         m.uninstall(self.home, apply=False)
         self.assertEqual(self.shell.readlink(), link)
         self.assertEqual(json.loads(versioned.read_text()), BASE)
+
+def load_script(name):
+    spec = importlib.util.spec_from_file_location(name.replace('-', '_'), ROOT/'scripts'/f'{name}.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+class PaletteHooks(unittest.TestCase):
+    """GTK3, GTK4 and Firefox paint the same Dark-R roles."""
+    def setUp(self):
+        self.gtk3 = load_script('gtk3')
+        self.gtk = load_script('gtk4-libadwaita')
+        self.firefox = load_script('firefox-chrome')
+        self.colors = self.gtk.load_colors(ROOT/'colors.toml')
+    def roles_block(self, name):
+        text = (ROOT/'scripts'/f'{name}.py').read_text()
+        return text[text.index('# ROLES-BEGIN'):text.index('# ROLES-END')]
+    def test_role_code_is_identical(self):
+        self.assertEqual(self.roles_block('gtk4-libadwaita'), self.roles_block('firefox-chrome'))
+        self.assertEqual(self.roles_block('gtk4-libadwaita'), self.roles_block('gtk3'))
+        self.assertEqual(self.roles_block('gtk4-libadwaita'), self.roles_block('vscode-surfaces'))
+    def outputs(self):
+        vscode = load_script('vscode-surfaces')
+        return {
+            'gtk3': self.gtk3.build_css(self.colors),
+            'gimp': self.gtk3.build_gimp_css(self.colors),
+            'gtk4': self.gtk.build_css(self.colors),
+            'firefox chrome': self.firefox.build_chrome(self.colors),
+            'firefox content': self.firefox.build_content(self.colors),
+            'vscode': json.dumps(vscode.chrome(vscode.load_colors(ROOT/'colors.toml'))),
+        }
+    def test_hooks_use_palette_colors_only(self):
+        import re, tomllib
+        palette = {v.lower() for v in tomllib.loads((ROOT/'colors.toml').read_text()).values()
+                   if isinstance(v, str) and v.startswith('#')}
+        for name, text in self.outputs().items():
+            # A two-digit alpha suffix on a palette color is still the palette.
+            for color in re.findall(r'#[0-9a-fA-F]{6}(?![0-9a-fA-F]{1}\b)', text):
+                self.assertIn(color.lower(), palette, name)
+            self.assertNotRegex(text, r'\b(alpha|rgba?|mix|shade|oklab)\(', name)
+    def test_css_hooks_set_colors_not_shapes(self):
+        import re
+        for name in ('gtk3', 'gimp', 'gtk4', 'firefox chrome', 'firefox content'):
+            text = self.outputs()[name]
+            self.assertNotRegex(text, r'\b(border-width|border-style|border-radius|padding|margin|min-width|min-height|font|text-shadow|-gtk-icon-shadow)\s*:', name)
+            self.assertNotRegex(text, r'\bbackground\s*:', name)
+            # Box shadows only where Adwaita draws a line with one.
+            for shadow in re.findall(r'box-shadow:\s*([^;]*);', text):
+                self.assertRegex(shadow, r'^inset (0 0 0 1px|0 -?4px|-?4px 0) #', name)
+    def test_gtk3_keeps_adwaita_shapes(self):
+        css = self.gtk3.build_css(self.colors)
+        r = self.gtk.roles(self.colors)
+        self.assertIn(f'notebook > header.top > tabs > tab:checked {{ box-shadow: inset 0 -4px {r["primary"]}; }}', css)
+        self.assertIn(f'infobar.error > revealer > box {{ border-bottom-color: {r["error"]}; }}', css)
+        self.assertIn(':not(:link):not(:visited),', css)
+        self.assertIn(f'button.destructive-action:hover:not(:disabled) {{\n  background-color: {r["error_hover"]};', css)
+        self.assertNotIn('button:active', css)
+    def test_header_and_menus_match(self):
+        gtk = self.gtk.build_css(self.colors)
+        firefox = self.firefox.build_chrome(self.colors)
+        r = self.gtk.roles(self.colors)
+        self.assertIn(f'--headerbar-bg-color: {r["bar"]};', gtk)
+        self.assertIn(f'--toolbar-background-color: {r["bar"]} !important;', firefox)
+        self.assertIn(f'--popover-bg-color: {r["card"]};', gtk)
+        self.assertIn(f'--panel-background-color: {r["card"]} !important;', firefox)
+        self.assertIn(f'--accent-bg-color: {r["primary"]};', gtk)
+        self.assertIn(f'--color-accent-primary: {r["primary"]} !important;', firefox)
+    def test_roles_follow_showcase(self):
+        r = self.gtk.roles(self.colors)
+        self.assertEqual(r['bar'], '#3f2c53')
+        self.assertEqual(r['hover'], '#f0a202')
+        self.assertEqual(r['primary'], '#77af8a')
+        self.assertEqual(r['focus'], '#fff3e6')
+        self.assertEqual(r['warn'], '#f0a202')
+        self.assertEqual(r['link'], '#d2bced')
+    def test_text_on_fills_reads(self):
+        r = self.gtk.roles(self.colors)
+        for fill in ('primary', 'hover', 'error', 'warn', 'ok'):
+            text = self.gtk.on_color(r[fill], r['bg'], r['fg'])
+            self.assertGreaterEqual(self.gtk.contrast(r[fill], text), 4.5, fill)
+    def test_no_translucent_washes(self):
+        # Translucent amber over the dark surfaces reads as brown.
+        for css in (self.gtk3.build_css(self.colors), self.gtk.build_css(self.colors), self.firefox.build_chrome(self.colors),
+                    self.firefox.build_content(self.colors)):
+            self.assertNotIn('color-mix', css)
+    def test_firefox_button_text_stays_light(self):
+        # --button-text-color is also panel menu text.
+        self.assertNotIn('--button-text-color:', self.firefox.build_chrome(self.colors))
+    def test_hover_is_solid_amber_with_dark_text(self):
+        gtk = self.gtk.build_css(self.colors)
+        chrome = self.firefox.build_chrome(self.colors)
+        self.assertIn('--toolbarbutton-background-color-hover: #f0a202 !important;', chrome)
+        self.assertIn('--button-text-color-hover: #0c040f !important;', chrome)
+        self.assertIn('background-color: #f0a202;\n  color: #0c040f;', gtk)
+
+    def test_gtk3_roles(self):
+        css = self.gtk3.build_css(self.colors)
+        self.assertIn('headerbar,\n.titlebar:not(headerbar) {\n  background-color: #3f2c53;', css)
+        self.assertIn('button:link > label {\n  color: #d2bced;', css)
+        self.assertIn('background-color: #f0a202;\n  background-image: none;\n  color: #0c040f;', css)
+        self.assertIn('@define-color theme_selected_bg_color #77af8a;', css)
+    def test_gtk3_apply_and_clear_keep_user_css(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(self.gtk3, 'restart_portal') as portal:
+            home = Path(tmp)
+            state = home/'.local/state/omarchy/current'
+            (state/'theme').mkdir(parents=True)
+            shutil.copy2(ROOT/'colors.toml', state/'theme/colors.toml')
+            (state/'theme.name').write_text('lcars\n')
+            user = home/'.config/gtk-3.0/gtk.css'
+            user.parent.mkdir(parents=True)
+            user.write_text('/* mine */\n')
+            self.assertEqual(self.gtk3.apply(home), 0)
+            self.assertIn('omarchy-lcars.css', user.read_text())
+            self.assertIn('/* mine */', user.read_text())
+            self.assertTrue((home/'.config/gtk-3.0/omarchy-lcars.css').is_file())
+            (state/'theme.name').write_text('nord\n')
+            self.assertEqual(self.gtk3.apply(home), 0)
+            self.assertEqual(user.read_text(), '/* mine */\n')
+            self.assertFalse((home/'.config/gtk-3.0/omarchy-lcars.css').exists())
+            self.assertEqual(portal.call_count, 2)
+    def test_gtk3_fill_text_stays_out_of_popups(self):
+        # A GTK3 menu or popover is a CSS child of the item that opened it, and
+        # that item stays hovered or checked: "menuitem:hover *" made every
+        # label in an open menubar menu dark on dark.
+        import re
+        css = self.gtk3.build_css(self.colors)
+        rules = re.sub(r'/\*.*?\*/|@define-color[^;]*;', '', re.sub(r'\s+', ' ', css))
+        selectors = [sel.strip() for block in re.findall(r'([^{}]+)\{', rules) for sel in block.split(',')]
+        reaching = [sel for sel in selectors if re.search(r'(\s|>\s*)\*$', sel) and not sel.startswith('tooltip')]
+        self.assertTrue(reaching)
+        for sel in reaching:
+            self.assertIn('> :not(window):not(popover) *', sel)
+        self.assertIn('menuitem:hover > :not(window):not(popover),', css)
+    def test_gimp_colors_cover_the_default_theme(self):
+        # Every color GIMP's Default theme defines, so no gray is left over.
+        css = self.gtk3.build_gimp_css(self.colors)
+        names = ('fg-color', 'bg-color', 'border-color', 'dimmed-fg-color', 'disabled-fg-color',
+                 'disabled-button-color', 'hover-color', 'widget-bg-color', 'selected-color',
+                 'extreme-bg-color', 'extreme-selected-color', 'strong-border-color',
+                 'stronger-border-color', 'edge-border-color', 'scrollbar-slider-color',
+                 'scrollbar-trough-color', 'ruler-color')
+        for name in names:
+            self.assertRegex(css, rf'@define-color {name} +#[0-9a-f]{{6}};')
+        r = self.gtk3.roles(self.colors)
+        self.assertRegex(css, rf'@define-color fg-color +{r["fg"]};')
+        self.assertRegex(css, rf'@define-color bg-color +{r["card"]};')
+    def test_gimp_apply_and_clear_keep_user_css(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(self.gtk3, 'restart_portal'):
+            home = Path(tmp)
+            state = home/'.local/state/omarchy/current'
+            (state/'theme').mkdir(parents=True)
+            shutil.copy2(ROOT/'colors.toml', state/'theme/colors.toml')
+            (state/'theme.name').write_text('lcars\n')
+            mine = home/'.config/GIMP/3.0/gimp.css'
+            mine.parent.mkdir(parents=True)
+            mine.write_text('/* mine */\n')
+            fresh = home/'.config/GIMP/3.2/gimp.css'
+            fresh.parent.mkdir(parents=True)
+            (home/'.config/GIMP/2.10').mkdir()
+            self.assertEqual(self.gtk3.apply(home), 0)
+            self.assertEqual(self.gtk3.apply(home), 0)
+            self.assertTrue(mine.read_text().startswith('/* mine */\n'))
+            for path in (mine, fresh):
+                self.assertEqual(path.read_text().count('BEGIN omarchy-lcars gimp'), 1)
+                self.assertIn('@define-color bg-color', path.read_text())
+            self.assertFalse((home/'.config/GIMP/2.10/gimp.css').exists())
+            (state/'theme.name').write_text('nord\n')
+            self.assertEqual(self.gtk3.apply(home), 0)
+            self.assertEqual(mine.read_text(), '/* mine */\n')
+            self.assertFalse(fresh.exists())
 
 if __name__ == '__main__': unittest.main()

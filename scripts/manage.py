@@ -22,6 +22,10 @@ RETIRED_HOOKS = {'lcars-vscode-terminal.py', 'lcars-vscode-terminal.sh', 'lcars-
 # Always shipped with the palette so GTK4/libadwaita apps can follow LCARS.
 GTK4_HOOK_PY = 'lcars-gtk4-libadwaita.py'
 GTK4_HOOK_SH = 'lcars-gtk4.sh'
+# GTK3 themes (Adwaita-dark, Omagtk) compile their colors in. Firefox and the
+# GTK file chooser portal read GTK3 too.
+GTK3_HOOK_PY = 'lcars-gtk3.py'
+GTK3_HOOK_SH = 'lcars-gtk3.sh'
 # Omarchy paints every VS Code surface from one background. This hook
 # rewrites the generated theme with a few distinct fills.
 VSCODE_HOOK_PY = 'lcars-vscode-surfaces.py'
@@ -31,6 +35,7 @@ FIREFOX_HOOK_PY = 'lcars-firefox-chrome.py'
 FIREFOX_HOOK_SH = 'lcars-firefox.sh'
 # (installed helper, theme-set wrapper, path inside this repo)
 PALETTE_HOOKS = (
+    (GTK3_HOOK_PY, GTK3_HOOK_SH, 'scripts/gtk3.py'),
     (GTK4_HOOK_PY, GTK4_HOOK_SH, 'scripts/gtk4-libadwaita.py'),
     (VSCODE_HOOK_PY, VSCODE_HOOK_SH, 'scripts/vscode-surfaces.py'),
     (FIREFOX_HOOK_PY, FIREFOX_HOOK_SH, 'scripts/firefox-chrome.py'),
@@ -331,7 +336,7 @@ def populate_stage(stage, source):
     return theme_stage
 
 def stage_palette_hooks(stage, source):
-    """Ship palette hooks. GTK4, VS Code, and Firefox ignore the plain theme palette."""
+    """Ship palette hooks. GTK3, GTK4, VS Code, and Firefox ignore the plain theme palette."""
     for helper_name, wrapper_name, relative in PALETTE_HOOKS:
         helper = stage / helper_name
         shutil.copy2(source / relative, helper)
@@ -351,14 +356,20 @@ def palette_hook_targets(config, stage):
         targets.append((stage / wrapper_name, config / 'hooks/theme-set.d' / wrapper_name))
     return targets
 
-def clear_gtk4(home=None):
-    script = ROOT / 'scripts/gtk4-libadwaita.py'
+def clear_hook(home, repo_name):
+    script = ROOT / 'scripts' / repo_name
     if not script.is_file():
         return
     cmd = [sys.executable, str(script), '--clear']
     if home is not None:
         cmd.extend(['--home', str(home)])
     subprocess.run(cmd, check=False)
+
+def clear_gtk4(home=None):
+    clear_hook(home, 'gtk4-libadwaita.py')
+
+def clear_gtk3(home=None):
+    clear_hook(home, 'gtk3.py')
 
 def apply_hook(home, installed_name, repo_name, extra_args=()):
     script = (home or Path.home()) / '.config/omarchy/hooks' / installed_name
@@ -381,17 +392,15 @@ def apply_firefox(home=None):
     apply_hook(home, FIREFOX_HOOK_PY, 'firefox-chrome.py')
 
 def clear_firefox(home=None):
-    script = ROOT / 'scripts/firefox-chrome.py'
-    if not script.is_file():
-        return
-    cmd = [sys.executable, str(script), '--clear']
-    if home is not None:
-        cmd.extend(['--home', str(home)])
-    subprocess.run(cmd, check=False)
+    clear_hook(home, 'firefox-chrome.py')
+
+def apply_gtk3(home=None):
+    apply_hook(home, GTK3_HOOK_PY, 'gtk3.py')
 
 def apply_lcars(theme_only):
     subprocess.run(['omarchy', 'theme', 'set', 'lcars'], check=True)
     # theme-set runs the hooks; call them again so a skipped hook still paints.
+    apply_gtk3()
     apply_gtk4()
     apply_vscode()
     apply_firefox()
@@ -607,12 +616,14 @@ def uninstall(home, apply=True):
     if apply:
         if active == 'lcars' and record['previous_theme']:
             subprocess.run(['omarchy', 'theme', 'set', record['previous_theme']], check=True)
+        clear_gtk3(home)
         clear_gtk4(home)
         clear_firefox(home)
         subprocess.run(['omarchy', 'restart', 'shell'], check=True)
         subprocess.run(['hyprctl', 'reload'], check=True)
         check_hyprland()
     else:
+        clear_gtk3(home)
         clear_gtk4(home)
         clear_firefox(home)
     record_file.unlink()

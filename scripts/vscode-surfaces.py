@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
-"""Separate VS Code chrome with the named LCARS surfaces.
+"""Paint VS Code chrome with the Dark-R roles.
 
-Omarchy's generated theme paints the activity bar, sidebar, editor, panel,
-and title bar with one background. The code well stays `background`. Cards,
-sidebars, panels, inputs, and the activity/title/status frame share
-`lighter_background`, split by the inactive border. The current tab and
-activity icon use green. Amber is hover only.
+Omarchy's generated theme paints every region with one background and uses
+translucent accent washes for hover and selection. This patches the workbench
+colors in vscode-theme.json from the same roles as the GTK and Firefox hooks:
+the code well stays `background`, sidebars, panels and fields are cards, the
+title bar is the app header strip, the current tab is sage, keyboard rows in
+the launcher, suggestions and menus are solid amber, and warnings are amber.
+
+VS Code has no hover color for match highlights or toolbar icons, so lists
+and toolbars hover with the quiet `--ui-border` fill instead of amber; an
+amber fill would hide the amber matches and the light icons. The keyboard
+cursor in those lists is a solid amber outline.
 """
 from __future__ import annotations
 
@@ -30,199 +36,324 @@ def hex_ok(value: object) -> bool:
     return True
 
 
-def _rgb(color: str) -> tuple[int, int, int]:
-    return int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
+def luminance(color: str) -> float:
+    """WCAG relative luminance."""
+    def channel(i: int) -> float:
+        c = int(color[i:i + 2], 16) / 255
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5)
 
 
-def luma(color: str) -> float:
-    r, g, b = _rgb(color)
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+def contrast(a: str, b: str) -> float:
+    la, lb = luminance(a), luminance(b)
+    lighter, darker = max(la, lb), min(la, lb)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def on_color(surface: str, background: str, foreground: str) -> str:
+    """Readable text on a filled surface, preferring the theme's own colors."""
+    best = foreground
+    best_ratio = 0.0
+    for candidate in (background, foreground, "#ffffff", "#000000"):
+        ratio = contrast(surface, candidate)
+        if candidate in ("#ffffff", "#000000") and best_ratio >= 4.5:
+            continue
+        if ratio > best_ratio:
+            best = candidate
+            best_ratio = ratio
+    return best
+
+
+# ROLES-BEGIN: keep identical in gtk3.py, gtk4-libadwaita.py, firefox-chrome.py
+# and vscode-surfaces.py.
+REQUIRED = ("background", "foreground", "accent", "red", "green")
+OPTIONAL = (
+    "lighter_background",
+    "selection",
+    "dark_foreground",
+    "bright_foreground",
+    "yellow",
+    "blue",
+    "magenta",
+    "bright_red",
+    "bright_yellow",
+    "bright_green",
+    "bright_magenta",
+    "hyprland_inactive_border",
+    "hyprland_active_border",
+)
 
 
 def load_colors(path: Path) -> dict[str, str]:
     data = tomllib.loads(path.read_text())
-    required = ("background", "foreground", "accent")
-    for key in required:
+    for key in REQUIRED:
         if not hex_ok(data.get(key)):
             raise ValueError(f"bad or missing color {key!r} in {path}")
-    optional = (
-        "lighter_background",
-        "selection",
-        "green",
-        "magenta",
-        "bright_magenta",
-        "bright_foreground",
-        "blue",
-        "muted",
-        "light_foreground",
-        "dark_foreground",
-        "hyprland_inactive_border",
-        "hyprland_active_border",
-    )
-    out = {key: data[key] for key in required}
-    for key in optional:
+    out = {key: data[key] for key in REQUIRED}
+    for key in OPTIONAL:
         if hex_ok(data.get(key)):
             out[key] = data[key]
     return out
 
 
-def surfaces(colors: dict[str, str]) -> dict[str, str] | None:
-    """Named roles. Chrome shares the card; borders keep the regions apart.
+def roles(colors: dict[str, str]) -> dict[str, str]:
+    """Dark-R UI roles (enterprise-r.com/showcase) from colors.toml.
 
-    The editor stays on `background`. Sidebar, panel, frame, and fields use
-    `lighter_background`. Idle rules use the inactive border. Widget edges
-    that have to read clearly use `dark_foreground`.
+    bar      --ui-border: header bars and the browser toolbar (.r-bar)
+    line     --ui-border: text selection, quiet separators
+    edge     --ui-fg-dark: card, panel and field borders
+    hover    --ui-accent: pointer and keyboard cursor
+    primary  --ui-green: current, chosen, checked, suggested, selected tab
+    focus    --ui-fg-bright: keyboard focus ring
+    active   --ui-border-active: focused field
+    link     --ui-magenta-bright, hover yellow-bright, visited yellow
+    notices  info blue, ok green, warn accent, error red
+    destructive buttons stay red; hover brightens them, as primary
     """
-    editor = colors["background"]
-    foreground = colors["foreground"]
-    if luma(editor) > luma(foreground):
-        return None
-
-    card = colors.get("lighter_background", editor)
-    idle = colors.get("hyprland_inactive_border", colors.get("selection", card))
-    visible = colors.get("dark_foreground", colors.get("muted", foreground))
-    active = colors.get("magenta") or colors.get("hyprland_active_border") or colors["accent"]
-    selection = colors.get("selection", idle)
+    bg = colors["background"]
+    fg = colors["foreground"]
+    accent = colors["accent"]
+    green = colors["green"]
+    card = colors.get("lighter_background", bg)
+    line = colors.get("hyprland_inactive_border", colors.get("selection", card))
+    magenta = colors.get("magenta", accent)
     return {
-        "editor": editor,
-        "panel": card,
-        "sidebar": card,
-        "frame": card,
-        "field": card,
-        "selection": selection,
-        "hover": idle,
-        "rule": idle,
-        "edge": visible,
-        "active_edge": active,
-        "focus": colors.get("bright_foreground", foreground),
-        "accent": colors["accent"],
-        "current": colors.get("green", colors["accent"]),
-        "link": colors.get("bright_magenta", active),
-        "foreground": foreground,
-        "placeholder": colors.get("dark_foreground", colors.get("muted", foreground)),
-        "inactive_icon": colors.get("light_foreground", foreground),
+        "bg": bg,
+        "fg": fg,
+        "card": card,
+        "bar": line,
+        "line": line,
+        "edge": colors.get("dark_foreground", fg),
+        "dim": colors.get("dark_foreground", fg),
+        "bright": colors.get("bright_foreground", fg),
+        "hover": accent,
+        "primary": green,
+        "primary_hover": colors.get("bright_green", green),
+        "focus": colors.get("bright_foreground", fg),
+        "active": colors.get("hyprland_active_border", magenta),
+        "link": colors.get("bright_magenta", magenta),
+        "link_hover": colors.get("bright_yellow", accent),
+        "link_visited": colors.get("yellow", magenta),
+        "info": colors.get("blue", accent),
+        "ok": green,
+        "warn": accent,
+        "error": colors["red"],
+        "error_hover": colors.get("bright_red", colors["red"]),
     }
+# ROLES-END
 
 
 def chrome(colors: dict[str, str]) -> dict[str, str]:
-    role = surfaces(colors)
-    if role is None:
+    """Workbench colors for a dark theme; empty for a light one."""
+    r = roles(colors)
+    bg, fg, card, line, edge = r["bg"], r["fg"], r["card"], r["line"], r["edge"]
+    if luminance(bg) > luminance(fg):
         return {}
-    editor = role["editor"]
-    panel = role["panel"]
-    sidebar = role["sidebar"]
-    frame = role["frame"]
-    field = role["field"]
-    selection = role["selection"]
-    rule = role["rule"]
-    edge = role["edge"]
-    active_edge = role["active_edge"]
-    accent = role["accent"]
-    current = role["current"]
-    focus = role["focus"]
-    link = role["link"]
-    foreground = role["foreground"]
-    placeholder = role["placeholder"]
-    inactive_icon = role["inactive_icon"]
-    hover = role["hover"]
+    dim, bright, hover, primary = r["dim"], r["bright"], r["hover"], r["primary"]
+    on_hover = on_color(hover, bg, fg)
+    on_primary = on_color(primary, bg, fg)
+    on_primary_hover = on_color(r["primary_hover"], bg, fg)
+    on_warn = on_color(r["warn"], bg, fg)
+    warn = r["warn"]
 
-    assigned = {
-        "editor.background": editor,
-        "editorGutter.background": editor,
-        "editorPane.background": editor,
-        "editorGroup.emptyBackground": editor,
-        "breadcrumb.background": editor,
-        "terminal.background": editor,
-        "outputView.background": editor,
-        "tab.activeBackground": editor,
-        "tab.activeForeground": current,
-        "tab.activeBorder": current,
-        "tab.activeBorderTop": current,
+    return {
+        # Code well.
+        "editor.background": bg,
+        "editorGutter.background": bg,
+        "editorPane.background": bg,
+        "editorGroup.emptyBackground": bg,
+        "breadcrumb.background": bg,
+        "terminal.background": bg,
+        "outputView.background": bg,
+        "welcomePage.background": bg,
+        "editor.lineHighlightBackground": card,
+        "editor.lineHighlightBorder": line,
 
-        "panel.background": panel,
+        # App header strip, as the GTK header bar and Firefox toolbar.
+        "titleBar.activeBackground": r["bar"],
+        "titleBar.activeForeground": fg,
+        "titleBar.inactiveBackground": card,
+        "titleBar.inactiveForeground": fg,
+        "titleBar.border": edge,
 
-        "sideBar.background": sidebar,
-        "sideBar.border": rule,
-        "tab.inactiveBackground": sidebar,
-        "tab.unfocusedInactiveBackground": sidebar,
-        "tab.unfocusedActiveBackground": sidebar,
-        "tab.hoverForeground": accent,
-        "dropdown.background": sidebar,
-        "welcomePage.tileBackground": sidebar,
-        "peekViewEditor.background": sidebar,
-        "peekViewEditorGutter.background": sidebar,
-        "peekViewResult.background": sidebar,
-        "commandCenter.background": sidebar,
+        # Cards: sidebars, panels, frame. Quiet rules keep regions apart.
+        "panel.background": card,
+        "panel.border": line,
+        "sideBar.background": card,
+        "sideBar.border": line,
+        "sideBarTitle.foreground": fg,
+        "sideBarSectionHeader.background": card,
+        "sideBarSectionHeader.border": line,
+        "panelSectionHeader.background": card,
+        "activityBar.background": card,
+        "activityBar.border": line,
+        "statusBar.background": card,
+        "statusBar.border": line,
+        "statusBar.noFolderBackground": card,
+        "statusBar.noFolderBorder": line,
+        "editorGroupHeader.tabsBackground": card,
+        "editorGroupHeader.noTabsBackground": card,
+        "editorGroupHeader.tabsBorder": line,
+        "editorGroupHeader.border": line,
+        "editorGroup.border": line,
+        "terminal.border": line,
+        "welcomePage.tileBackground": card,
+        "peekViewEditor.background": card,
+        "peekViewEditorGutter.background": card,
+        "peekViewResult.background": card,
+        "peekViewTitle.background": card,
+        "commandCenter.background": card,
+        "notificationCenterHeader.background": card,
+        "quickInputTitle.background": card,
+        "debugToolBar.background": card,
+        "outputViewStickyScroll.background": card,
 
-        "activityBar.background": frame,
-        "activityBar.foreground": current,
-        "activityBar.inactiveForeground": inactive_icon,
-        "activityBar.activeBorder": current,
-        "activityBar.border": rule,
-        "titleBar.activeBackground": frame,
-        "titleBar.inactiveBackground": frame,
-        "titleBar.border": rule,
-        "statusBar.background": frame,
-        "statusBar.border": rule,
-        "statusBar.noFolderBackground": frame,
-        "statusBar.noFolderBorder": rule,
-        "editorGroupHeader.tabsBackground": frame,
-        "editorGroupHeader.noTabsBackground": frame,
-        "editorGroupHeader.tabsBorder": rule,
-        "editorGroupHeader.border": rule,
-        "tab.border": rule,
-        "sideBarSectionHeader.background": frame,
-        "sideBarTitle.foreground": inactive_icon,
-        "panelSectionHeader.background": frame,
-        "peekViewTitle.background": frame,
-        "notificationCenterHeader.background": frame,
-        "quickInputTitle.background": frame,
-        "debugToolBar.background": frame,
-        "outputViewStickyScroll.background": frame,
-
-        "input.background": field,
-        "input.placeholderForeground": placeholder,
-        "checkbox.background": field,
-        "dropdown.listBackground": field,
-        "editorWidget.background": field,
+        # Popups are cards with a dim edge.
+        "widget.border": edge,
+        "editorWidget.background": card,
         "editorWidget.border": edge,
-        "editorHoverWidget.background": field,
+        "editorHoverWidget.background": card,
         "editorHoverWidget.border": edge,
-        "editorSuggestWidget.background": field,
+        "editorSuggestWidget.background": card,
         "editorSuggestWidget.border": edge,
-        "editorSuggestWidget.selectedBackground": selection,
-        "editorMarkerNavigation.background": field,
-        "quickInput.background": field,
-        "menu.background": field,
+        "editorMarkerNavigation.background": card,
+        "quickInput.background": card,
+        "menu.background": card,
         "menu.border": edge,
-        "menu.selectionBackground": selection,
-        "notifications.background": field,
-        "breadcrumbPicker.background": field,
-        "listFilterWidget.background": field,
-        "settings.dropdownBackground": field,
-        "settings.textInputBackground": field,
-        "settings.numberInputBackground": field,
-        "settings.checkboxBackground": field,
-        "welcomePage.background": editor,
+        "notifications.background": card,
+        "notifications.border": edge,
+        "notificationToast.border": edge,
+        "breadcrumbPicker.background": card,
+        "listFilterWidget.background": card,
 
-        "list.activeSelectionBackground": selection,
-        "list.activeSelectionForeground": foreground,
-        "list.focusBackground": selection,
-        "list.focusForeground": foreground,
-        "list.inactiveSelectionBackground": hover,
-        "list.hoverBackground": hover,
-        "quickInputList.focusBackground": selection,
+        # Fields: card fill, dim border, dim placeholder.
+        "input.background": card,
+        "input.border": edge,
+        "input.placeholderForeground": dim,
+        "dropdown.background": card,
+        "dropdown.listBackground": card,
+        "dropdown.border": edge,
+        "checkbox.background": card,
+        "checkbox.border": edge,
+        "checkbox.selectBackground": card,
+        "checkbox.selectBorder": edge,
+        "settings.dropdownBackground": card,
+        "settings.textInputBackground": card,
+        "settings.numberInputBackground": card,
+        "settings.checkboxBackground": card,
+        "descriptionForeground": dim,
+        "editorLineNumber.foreground": dim,
 
-        "focusBorder": focus,
-        "textLink.foreground": link,
-        "textLink.activeForeground": focus,
+        # Tabs: sage marks the current one, amber is hover.
+        "tab.activeBackground": bg,
+        "tab.activeForeground": primary,
+        "tab.activeBorder": primary,
+        "tab.activeBorderTop": primary,
+        "tab.unfocusedActiveBackground": card,
+        "tab.unfocusedActiveBorderTop": primary,
+        "tab.inactiveBackground": card,
+        "tab.unfocusedInactiveBackground": card,
+        "tab.inactiveForeground": dim,
+        "tab.unfocusedInactiveForeground": dim,
+        "tab.border": line,
+        "tab.hoverBackground": hover,
+        "tab.hoverForeground": on_hover,
+        "tab.unfocusedHoverBackground": hover,
+        "tab.unfocusedHoverForeground": on_hover,
+        "tab.hoverBorder": hover,
 
-        "editorGroup.border": active_edge,
-        "panel.border": rule,
-        "terminal.border": rule,
-        "sideBarSectionHeader.border": rule,
+        # Activity bar: sage for the current view, no wash behind it.
+        "activityBar.foreground": primary,
+        "activityBar.inactiveForeground": fg,
+        "activityBar.activeBorder": primary,
+        "activityBar.activeBackground": card,
+
+        # Launcher, suggestions and menus: the keyboard row is solid amber.
+        "quickInputList.focusBackground": hover,
+        "quickInputList.focusForeground": on_hover,
+        "quickInputList.focusIconForeground": on_hover,
+        "list.focusHighlightForeground": on_hover,
+        "editorSuggestWidget.selectedBackground": hover,
+        "editorSuggestWidget.selectedForeground": on_hover,
+        "editorSuggestWidget.selectedIconForeground": on_hover,
+        "editorSuggestWidget.focusHighlightForeground": on_hover,
+        "menu.selectionBackground": hover,
+        "menu.selectionForeground": on_hover,
+        "menu.selectionBorder": hover,
+        "menubar.selectionBackground": hover,
+        "menubar.selectionForeground": on_hover,
+        "statusBarItem.hoverBackground": hover,
+        "statusBarItem.hoverForeground": on_hover,
+        "statusBarItem.prominentHoverBackground": hover,
+        "statusBarItem.prominentHoverForeground": on_hover,
+        "statusBarItem.remoteHoverBackground": hover,
+        "statusBarItem.remoteHoverForeground": on_hover,
+
+        # Trees and lists keep amber matches readable: quiet fills, the
+        # keyboard cursor as an amber outline, the chosen row in sage.
+        "list.hoverBackground": line,
+        "list.hoverForeground": fg,
+        "list.focusBackground": line,
+        "list.focusForeground": fg,
+        "list.focusOutline": hover,
+        "list.focusAndSelectionOutline": hover,
+        "list.activeSelectionBackground": line,
+        "list.activeSelectionForeground": primary,
+        "list.activeSelectionIconForeground": primary,
+        "list.inactiveSelectionBackground": line,
+        "list.inactiveSelectionForeground": fg,
+        "list.inactiveFocusBackground": line,
+        "list.inactiveFocusOutline": edge,
+        "list.highlightForeground": hover,
+        "toolbar.hoverBackground": line,
+        "toolbar.activeBackground": line,
+        "inputOption.hoverBackground": line,
+        "settings.focusedRowBackground": line,
+        "settings.focusedRowBorder": hover,
+        "settings.rowHoverBackground": line,
+        "peekViewResult.selectionBackground": line,
+
+        # Buttons and toggles: sage when suggested or on, amber on hover.
+        "button.background": primary,
+        "button.foreground": on_primary,
+        "button.hoverBackground": r["primary_hover"],
+        "button.border": edge,
+        "button.secondaryBackground": line,
+        "button.secondaryForeground": fg,
+        "button.secondaryHoverBackground": card,
+        "inputOption.activeBackground": primary,
+        "inputOption.activeForeground": on_primary,
+        "inputOption.activeBorder": primary,
+        "progressBar.background": primary,
+
+        # Focus and links.
+        "focusBorder": r["focus"],
+        "textLink.foreground": r["link"],
+        "textLink.activeForeground": r["link_hover"],
+
+        # Notices: warnings are amber; info, error stay blue and red.
+        "editorWarning.foreground": warn,
+        "editorWarning.background": f"{warn}15",
+        "editorOverviewRuler.warningForeground": warn,
+        "minimap.warningHighlight": warn,
+        "problemsWarningIcon.foreground": warn,
+        "notificationsWarningIcon.foreground": warn,
+        "list.warningForeground": warn,
+        "inputValidation.warningForeground": warn,
+        "inputValidation.warningBorder": warn,
+        "inputValidation.warningBackground": f"{warn}20",
+        "editorMarkerNavigationWarning.background": f"{warn}20",
+        "editorMarkerNavigationWarning.headerBackground": f"{warn}15",
+        "debugConsole.warningForeground": warn,
+        "statusBarItem.warningBackground": warn,
+        "statusBarItem.warningForeground": on_warn,
+        "statusBarItem.warningHoverBackground": warn,
+        "statusBarItem.warningHoverForeground": on_warn,
+        "editorInfo.foreground": r["info"],
+        "notificationsInfoIcon.foreground": r["info"],
+        "editorError.foreground": r["error"],
+        "notificationsErrorIcon.foreground": r["error"],
     }
-    return assigned
 
 
 def active_theme_name(home: Path) -> str:

@@ -48,15 +48,16 @@ def hex_ok(value: object) -> bool:
     return True
 
 
-def luma(color: str) -> float:
-    r = int(color[1:3], 16)
-    g = int(color[3:5], 16)
-    b = int(color[5:7], 16)
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+def luminance(color: str) -> float:
+    """WCAG relative luminance."""
+    def channel(i: int) -> float:
+        c = int(color[i:i + 2], 16) / 255
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5)
 
 
 def contrast(a: str, b: str) -> float:
-    la, lb = luma(a), luma(b)
+    la, lb = luminance(a), luminance(b)
     lighter, darker = max(la, lb), min(la, lb)
     return (lighter + 0.05) / (darker + 0.05)
 
@@ -79,9 +80,9 @@ def ink(color: str, background: str, bright: str | None = None) -> str:
     """Palette color for icons and text on the window.
 
     libadwaita's documented standalone form lightens with
-    `oklab(... max(l, 0.85) ...)`. On this gold that leaves sRGB, so links
-    and accent icons paint a color the palette does not contain. Use the
-    palette color when it already reads on the background.
+    `oklab(... max(l, 0.85) ...)`, which can paint a color the palette does
+    not contain. Use the palette color when it already reads on the
+    background.
     """
     if contrast(color, background) >= 4.5:
         return color
@@ -90,179 +91,165 @@ def ink(color: str, background: str, bright: str | None = None) -> str:
     return on_color(background, background, color)
 
 
+# ROLES-BEGIN: keep identical in gtk3.py, gtk4-libadwaita.py, firefox-chrome.py
+# and vscode-surfaces.py.
+REQUIRED = ("background", "foreground", "accent", "red", "green")
+OPTIONAL = (
+    "lighter_background",
+    "selection",
+    "dark_foreground",
+    "bright_foreground",
+    "yellow",
+    "blue",
+    "magenta",
+    "bright_red",
+    "bright_yellow",
+    "bright_green",
+    "bright_magenta",
+    "hyprland_inactive_border",
+    "hyprland_active_border",
+)
+
+
 def load_colors(path: Path) -> dict[str, str]:
     data = tomllib.loads(path.read_text())
-    required = ("background", "foreground", "accent", "red", "green", "yellow")
-    for key in required:
+    for key in REQUIRED:
         if not hex_ok(data.get(key)):
             raise ValueError(f"bad or missing color {key!r} in {path}")
-    optional = (
-        "dark_background",
-        "darker_background",
-        "lighter_background",
-        "selection",
-        "blue",
-        "cyan",
-        "magenta",
-        "orange",
-        "bright_foreground",
-        "bright_yellow",
-        "bright_orange",
-        "bright_red",
-        "bright_green",
-        "bright_blue",
-        "bright_cyan",
-        "bright_magenta",
-        "dark_foreground",
-        "hyprland_inactive_border",
-        "hyprland_active_border",
-    )
-    out = {key: data[key] for key in required}
-    for key in optional:
+    out = {key: data[key] for key in REQUIRED}
+    for key in OPTIONAL:
         if hex_ok(data.get(key)):
             out[key] = data[key]
     return out
 
 
-def build_css(colors: dict[str, str]) -> str:
+def roles(colors: dict[str, str]) -> dict[str, str]:
+    """Dark-R UI roles (enterprise-r.com/showcase) from colors.toml.
+
+    bar      --ui-border: header bars and the browser toolbar (.r-bar)
+    line     --ui-border: text selection, quiet separators
+    edge     --ui-fg-dark: card, panel and field borders
+    hover    --ui-accent: pointer and keyboard cursor
+    primary  --ui-green: current, chosen, checked, suggested, selected tab
+    focus    --ui-fg-bright: keyboard focus ring
+    active   --ui-border-active: focused field
+    link     --ui-magenta-bright, hover yellow-bright, visited yellow
+    notices  info blue, ok green, warn accent, error red
+    destructive buttons stay red; hover brightens them, as primary
+    """
     bg = colors["background"]
     fg = colors["foreground"]
     accent = colors["accent"]
-    red = colors["red"]
     green = colors["green"]
-    yellow = colors["yellow"]
-    # Two named surfaces and the palette accent. No extra widget rules.
     card = colors.get("lighter_background", bg)
-    selection = colors.get("selection", card)
-    dim = colors.get("dark_foreground", fg)
+    line = colors.get("hyprland_inactive_border", colors.get("selection", card))
+    magenta = colors.get("magenta", accent)
+    return {
+        "bg": bg,
+        "fg": fg,
+        "card": card,
+        "bar": line,
+        "line": line,
+        "edge": colors.get("dark_foreground", fg),
+        "dim": colors.get("dark_foreground", fg),
+        "bright": colors.get("bright_foreground", fg),
+        "hover": accent,
+        "primary": green,
+        "primary_hover": colors.get("bright_green", green),
+        "focus": colors.get("bright_foreground", fg),
+        "active": colors.get("hyprland_active_border", magenta),
+        "link": colors.get("bright_magenta", magenta),
+        "link_hover": colors.get("bright_yellow", accent),
+        "link_visited": colors.get("yellow", magenta),
+        "info": colors.get("blue", accent),
+        "ok": green,
+        "warn": accent,
+        "error": colors["red"],
+        "error_hover": colors.get("bright_red", colors["red"]),
+    }
+# ROLES-END
 
-    red_ink = ink(red, bg, colors.get("bright_red"))
-    green_ink = ink(green, bg, colors.get("bright_green"))
-    yellow_ink = ink(yellow, bg, colors.get("bright_yellow"))
 
-    accent_fg = on_color(accent, bg, fg)
-    red_fg = on_color(red, bg, fg)
-    green_fg = on_color(green, bg, fg)
-    yellow_fg = on_color(yellow, bg, fg)
+def build_css(colors: dict[str, str]) -> str:
+    r = roles(colors)
+    bg, fg, card = r["bg"], r["fg"], r["card"]
 
-    # Both @define-color (older libadwaita / some GTK4 CSS) and --vars (1.6+).
-    named = {
+    def tone(name: str) -> tuple[str, str, str]:
+        # Standalone ink, filled background, text on the fill.
+        fill = r[name]
+        return ink(fill, bg), fill, on_color(fill, bg, fg)
+
+    accent_ink, accent_bg, accent_fg = tone("primary")
+    error_ink, error_bg, error_fg = tone("error")
+    ok_ink, ok_bg, ok_fg = tone("ok")
+    warn_ink, warn_bg, warn_fg = tone("warn")
+
+    # libadwaita 1.10 defines each --var from the matching @define-color, and
+    # older releases read only the latter, so one table feeds both forms.
+    adwaita = {
         "window_bg_color": bg,
         "window_fg_color": fg,
         "view_bg_color": bg,
         "view_fg_color": fg,
-        "headerbar_bg_color": card,
+        "headerbar_bg_color": r["bar"],
         "headerbar_fg_color": fg,
-        "headerbar_border_color": accent,
-        "headerbar_backdrop_color": bg,
-        "headerbar_shade_color": "alpha(black, 0.36)",
-        "headerbar_darker_shade_color": f"alpha({accent}, 0.55)",
+        "headerbar_border_color": r["edge"],
+        "headerbar_backdrop_color": card,
         "card_bg_color": card,
         "card_fg_color": fg,
-        "card_shade_color": "alpha(black, 0.36)",
         "dialog_bg_color": card,
         "dialog_fg_color": fg,
         "popover_bg_color": card,
         "popover_fg_color": fg,
-        "popover_shade_color": "alpha(black, 0.36)",
         "sidebar_bg_color": card,
         "sidebar_fg_color": fg,
         "sidebar_backdrop_color": bg,
-        "sidebar_border_color": accent,
-        "sidebar_shade_color": "alpha(black, 0.25)",
+        "sidebar_border_color": r["edge"],
         "secondary_sidebar_bg_color": card,
         "secondary_sidebar_fg_color": fg,
         "secondary_sidebar_backdrop_color": bg,
-        "secondary_sidebar_border_color": accent,
-        "secondary_sidebar_shade_color": "alpha(black, 0.25)",
+        "secondary_sidebar_border_color": r["edge"],
         "thumbnail_bg_color": card,
         "thumbnail_fg_color": fg,
-        "accent_color": accent,
-        "accent_bg_color": accent,
+        "overview_bg_color": card,
+        "overview_fg_color": fg,
+        "accent_color": accent_ink,
+        "accent_bg_color": accent_bg,
         "accent_fg_color": accent_fg,
-        "destructive_color": red_ink,
-        "destructive_bg_color": red,
-        "destructive_fg_color": red_fg,
-        "success_color": green_ink,
-        "success_bg_color": green,
-        "success_fg_color": green_fg,
-        "warning_color": yellow_ink,
-        "warning_bg_color": yellow,
-        "warning_fg_color": yellow_fg,
-        "error_color": red_ink,
-        "error_bg_color": red,
-        "error_fg_color": red_fg,
+        "destructive_color": error_ink,
+        "destructive_bg_color": error_bg,
+        "destructive_fg_color": error_fg,
+        "success_color": ok_ink,
+        "success_bg_color": ok_bg,
+        "success_fg_color": ok_fg,
+        "warning_color": warn_ink,
+        "warning_bg_color": warn_bg,
+        "warning_fg_color": warn_fg,
+        "error_color": error_ink,
+        "error_bg_color": error_bg,
+        "error_fg_color": error_fg,
+    }
+    # GTK3-era names that some GTK4 apps still read.
+    legacy = {
         "theme_bg_color": bg,
         "theme_fg_color": fg,
         "theme_base_color": bg,
         "theme_text_color": fg,
-        "theme_selected_bg_color": selection,
-        "theme_selected_fg_color": fg,
+        "theme_selected_bg_color": r["line"],
+        "theme_selected_fg_color": r["bright"],
         "theme_unfocused_bg_color": bg,
         "theme_unfocused_fg_color": fg,
         "theme_unfocused_base_color": bg,
         "theme_unfocused_text_color": fg,
-        "theme_unfocused_selected_bg_color": selection,
-        "theme_unfocused_selected_fg_color": fg,
+        "theme_unfocused_selected_bg_color": r["line"],
+        "theme_unfocused_selected_fg_color": r["bright"],
         "insensitive_bg_color": bg,
-        "insensitive_fg_color": dim,
+        "insensitive_fg_color": r["dim"],
         "insensitive_base_color": bg,
-        "borders": accent,
-        "unfocused_borders": accent,
-        "link_color": accent,
-        "unfocused_insensitive_color": dim,
-    }
-
-    vars_map = {
-        "--window-bg-color": bg,
-        "--window-fg-color": fg,
-        "--view-bg-color": bg,
-        "--view-fg-color": fg,
-        "--headerbar-bg-color": card,
-        "--headerbar-fg-color": fg,
-        "--headerbar-border-color": accent,
-        "--headerbar-backdrop-color": bg,
-        "--headerbar-shade-color": "rgb(0 0 0 / 36%)",
-        "--headerbar-darker-shade-color": f"color-mix(in srgb, {accent} 55%, transparent)",
-        "--card-bg-color": card,
-        "--card-fg-color": fg,
-        "--card-shade-color": "rgb(0 0 0 / 36%)",
-        "--dialog-bg-color": card,
-        "--dialog-fg-color": fg,
-        "--popover-bg-color": card,
-        "--popover-fg-color": fg,
-        "--popover-shade-color": "rgb(0 0 0 / 36%)",
-        "--sidebar-bg-color": card,
-        "--sidebar-fg-color": fg,
-        "--sidebar-backdrop-color": bg,
-        "--sidebar-border-color": accent,
-        "--sidebar-shade-color": "rgb(0 0 0 / 25%)",
-        "--secondary-sidebar-bg-color": card,
-        "--secondary-sidebar-fg-color": fg,
-        "--secondary-sidebar-backdrop-color": bg,
-        "--secondary-sidebar-border-color": accent,
-        "--secondary-sidebar-shade-color": "rgb(0 0 0 / 25%)",
-        "--thumbnail-bg-color": card,
-        "--thumbnail-fg-color": fg,
-        "--overview-bg-color": card,
-        "--overview-fg-color": fg,
-        "--accent-bg-color": accent,
-        "--accent-fg-color": accent_fg,
-        "--accent-color": accent,
-        "--destructive-bg-color": red,
-        "--destructive-fg-color": red_fg,
-        "--destructive-color": red_ink,
-        "--success-bg-color": green,
-        "--success-fg-color": green_fg,
-        "--success-color": green_ink,
-        "--warning-bg-color": yellow,
-        "--warning-fg-color": yellow_fg,
-        "--warning-color": yellow_ink,
-        "--error-bg-color": red,
-        "--error-fg-color": red_fg,
-        "--error-color": red_ink,
-        "--shade-color": "rgb(0 0 6 / 25%)",
-        "--scrollbar-outline-color": "rgb(0 0 6 / 50%)",
+        "borders": r["edge"],
+        "unfocused_borders": r["edge"],
+        "link_color": r["link"],
+        "unfocused_insensitive_color": r["dim"],
     }
 
     lines = [
@@ -270,17 +257,90 @@ def build_css(colors: dict[str, str]) -> str:
         "/* Palette follows the active Omarchy theme's colors.toml when LCARS is selected. */",
         "",
     ]
-    for name, value in named.items():
+    for name, value in {**adwaita, **legacy}.items():
         lines.append(f"@define-color {name} {value};")
     lines.append("")
     # :root covers modern libadwaita; window covers cases where root scope is inert.
     for selector in (":root", "window", "window.background"):
         lines.append(f"{selector} {{")
-        for name, value in vars_map.items():
-            lines.append(f"  {name}: {value};")
+        for name, value in adwaita.items():
+            lines.append(f"  --{name.replace('_', '-')}: {value};")
         lines.append("}")
         lines.append("")
+    lines.append(widget_rules(r))
     return "\n".join(lines).rstrip() + "\n"
+
+
+def widget_rules(r: dict[str, str]) -> str:
+    """States libadwaita paints from currentColor washes or the accent.
+
+    User CSS outranks the theme by priority, so plain selectors win. A wash
+    of the light text over the dark window reads as gray, and libadwaita has
+    one accent for checked controls, links, focus and selection, so these
+    few rules carry the Dark-R roles that the variables cannot. They set
+    colors only; shapes stay libadwaita's.
+    """
+    on_hover = on_color(r["hover"], r["bg"], r["fg"])
+    on_primary = on_color(r["primary"], r["bg"], r["fg"])
+    on_primary_hover = on_color(r["primary_hover"], r["bg"], r["fg"])
+    on_error_hover = on_color(r["error_hover"], r["bg"], r["fg"])
+    return f"""/* Header strip, as the showcase .r-bar. */
+toolbarview > .top-bar,
+toolbarview > .top-bar headerbar {{
+  background-color: {r["bar"]};
+}}
+
+/* Hover: solid amber with dark text, as the launcher. */
+button:hover:not(:disabled):not(:checked):not(.suggested-action):not(.destructive-action):not(.link),
+modelbutton:hover,
+.navigation-sidebar > row:hover:not(:selected) {{
+  background-color: {r["hover"]};
+  color: {on_hover};
+}}
+
+/* Current or chosen: green with dark text. */
+button:checked:not(.suggested-action):not(.destructive-action),
+.navigation-sidebar > row:selected {{
+  background-color: {r["primary"]};
+  color: {on_primary};
+}}
+
+/* Suggested and destructive keep their color on hover, brightened. */
+button.suggested-action:hover:not(:disabled) {{
+  background-color: {r["primary_hover"]};
+  color: {on_primary_hover};
+}}
+
+button.destructive-action:hover:not(:disabled) {{
+  background-color: {r["error_hover"]};
+  color: {on_error_hover};
+}}
+
+selection,
+text selection {{
+  background-color: {r["line"]};
+  color: {r["bright"]};
+}}
+
+link,
+button.link {{
+  color: {r["link"]};
+}}
+
+link:visited,
+button.link:visited {{
+  color: {r["link_visited"]};
+}}
+
+link:hover,
+button.link:hover {{
+  color: {r["link_hover"]};
+}}
+
+:focus-visible {{
+  outline-color: {r["focus"]};
+}}
+"""
 
 
 def strip_managed_block(text: str) -> str:
