@@ -8,28 +8,32 @@ import "Model.js" as Model
 // Date/time label for the bar, and the host for the calendar popup.
 //
 // Left click reveals the calendar — asking "what is the date?" is what a
-// click on a clock means — right click walks the common label formats, and
-// middle click opens the timezone picker.
+// click on a clock means — and middle click opens the timezone picker.
+// The horizontal label is fixed. shell.json `format` belongs to Omarchy's
+// clock menu, and reading it here lets an update or a right-click replace
+// this label. A side bar still follows verticalFormat.
 BarWidget {
   id: root
   moduleName: "omarchy.clock"
   readonly property bool darkR: Color.background.toString() === "#0c040f"
+  readonly property string themeFormat: "yyyyMM.dd ddd HH:mm"
 
   property date displayDate: clock.date
 
   readonly property string configuredFormat: vertical
     ? setting("verticalFormat", "HH\n—\nmm")
-    : setting("format", "yyyyMM.dd ddd HH:mm")
+    : themeFormat
   readonly property string configuredAltFormat: vertical
     ? setting("verticalFormatAlt", "dd\nMMM\n'W'ww\n''yy")
     : setting("formatAlt", "d MMMM 'W'ww yyyy")
 
   readonly property var formatRing: Model.clockFormatRing(configuredFormat, configuredAltFormat, Model.clockFormats(vertical))
 
-  // What the bar shows is what shell.json stores, so a cycled format is the
-  // format from then on rather than something that reverts on restart.
+  // A side bar still stores the cycled format. The horizontal label does not.
   readonly property string activeFormat: configuredFormat
-  readonly property string displayText: formatted(displayDate)
+  // activeFormat has to be read here. A call to formatted() does not
+  // subscribe to it, so the label can stay on the first string it built.
+  readonly property string displayText: formatted(displayDate, activeFormat)
   readonly property var verticalLines: displayText.split("\n")
 
   function refresh() {
@@ -38,6 +42,7 @@ BarWidget {
   }
 
   function cycleFormat() {
+    if (!vertical) return
     var current = String(configuredFormat)
     var next = Model.nextClockFormat(formatRing, current)
     if (next === "" || next === current) return
@@ -53,8 +58,9 @@ BarWidget {
       root.bar.shell.updateEntryInline(root.moduleName, entry)
   }
 
-  function formatted(date) {
-    return Qt.formatDateTime(date, activeFormat.replace(/ww/g, Model.isoWeekLiteral(date.getFullYear(), date.getMonth(), date.getDate())))
+  function formatted(date, format) {
+    var pattern = String(format === undefined ? activeFormat : format)
+    return Qt.formatDateTime(date, pattern.replace(/ww/g, Model.isoWeekLiteral(date.getFullYear(), date.getMonth(), date.getDate())))
   }
 
   // ---- Calendar popup. Shape contract for shell.summon/hide/toggle

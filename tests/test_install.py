@@ -325,7 +325,7 @@ class Installation(unittest.TestCase):
         d = json.loads(self.shell.read_text())
         # keep the rest of the original test body by re-reading below marker if needed
         clock = next(x for x in d['bar']['layout']['left'] if x['id'] == 'dark-r.clock')
-        self.assertEqual(clock['format'], m.THEME_CLOCK_FORMAT)
+        self.assertEqual(clock['format'], 'HH:mm')
         ids = [x['id'] for x in d['bar']['layout']['right']]
         self.assertIn('dark-r.plate', ids)
         self.assertNotIn('dark-r.band', ids)
@@ -372,7 +372,7 @@ class Installation(unittest.TestCase):
         self.assertEqual([x['id'] for x in laid['center']], ['dark-r.workspaces'])
         self.assertEqual([x['id'] for x in laid['centerEnd']], ['omarchy.elsewhen', 'personal.after'])
         self.assertEqual(laid['left'][1]['id'], 'dark-r.clock')
-        self.assertEqual(laid['left'][1]['format'], m.THEME_CLOCK_FORMAT)
+        self.assertEqual(laid['left'][1]['format'], 'HH:mm')
         current = json.loads(self.shell.read_text())
         current['bar']['layout']['centerEnd'].append({'id': 'new.widget'})
         m.write_json(self.shell, current)
@@ -455,7 +455,7 @@ class Installation(unittest.TestCase):
         for _ in range(2):
             self.install()
             clock = next(x for x in json.loads(self.shell.read_text())['bar']['layout']['left'] if x['id'] == 'dark-r.clock')
-            self.assertEqual(clock['format'], m.THEME_CLOCK_FORMAT)
+            self.assertEqual(clock['format'], 'HH:mm')
             m.uninstall(self.home, apply=False)
             clock = json.loads(self.shell.read_text())['bar']['layout']['center'][0]
             self.assertEqual((clock['id'], clock['format'], clock['timezone']), ('omarchy.clock', 'HH:mm', 'Europe/Zurich'))
@@ -470,13 +470,13 @@ class Installation(unittest.TestCase):
         clock = json.loads(self.shell.read_text())['bar']['layout']['center'][0]
         self.assertEqual((clock['id'], clock['format']), ('omarchy.clock', 'HH:mm'))
         self.assertFalse((self.home/'.local/state/omarchy-dark-r/install.json').exists())
-    def test_install_writes_the_theme_clock_format(self):
+    def test_install_leaves_the_clock_format(self):
         d = copy.deepcopy(BASE)
         d['bar']['layout']['center'][0]['format'] = 'HH:mm:ss'
         m.write_json(self.shell, d)
         self.install()
         clock = next(x for x in json.loads(self.shell.read_text())['bar']['layout']['left'] if x['id'] == 'dark-r.clock')
-        self.assertEqual(clock['format'], m.THEME_CLOCK_FORMAT)
+        self.assertEqual(clock['format'], 'HH:mm:ss')
         self.assertEqual(clock['timezone'], 'Europe/Zurich')
         m.uninstall(self.home, apply=False)
         clock = json.loads(self.shell.read_text())['bar']['layout']['center'][0]
@@ -548,7 +548,7 @@ class Installation(unittest.TestCase):
         self.assertEqual([x['id'] for x in restored['bar']['layout']['left']].count('dark-r.stars'), 1)
         m.uninstall(self.home, apply=False)
         self.assertEqual(personal.read_text(), 'personal palette')
-    def test_reinstall_writes_the_theme_clock_format_when_it_was_never_set(self):
+    def test_reinstall_leaves_the_clock_format(self):
         source = self.source_copy()
         self.install(source=source)
         shell = json.loads(self.shell.read_text())
@@ -559,7 +559,7 @@ class Installation(unittest.TestCase):
         self.install(source=source, reinstall=True)
         restored = json.loads(self.shell.read_text())
         clock = next(x for x in restored['bar']['layout']['left'] if x['id'] == 'dark-r.clock')
-        self.assertEqual(clock['format'], m.THEME_CLOCK_FORMAT)
+        self.assertEqual(clock['format'], 'HH:mm')
         self.assertEqual(clock['timezone'], 'Europe/Zurich')
         self.assertEqual(restored['idle']['lock'], 900)
     def test_reinstall_keeps_a_clock_label_chosen_later(self):
@@ -726,6 +726,96 @@ class Installation(unittest.TestCase):
         m.uninstall(self.home, apply=False)
         self.assertTrue((theme/'backgrounds').is_symlink())
         self.assertEqual(marker.read_bytes(), b'wallpaper')
+    def place_checkout(self):
+        theme = self.home/'.config/omarchy/themes/dark-r'
+        shutil.copytree(self.source_copy(), theme)
+        (theme/'.git').mkdir()
+        (theme/'README.md').write_text('keep\n')
+        return theme
+    def test_theme_checkout_installs_extensions_only(self):
+        theme = self.place_checkout()
+        colors = (theme/'colors.toml').read_bytes()
+        record = self.install(source=theme)
+        self.assertTrue(record['theme_checkout'])
+        self.assertFalse(any(entry['path'].endswith('/themes/dark-r') for entry in record['targets']))
+        self.assertEqual((theme/'colors.toml').read_bytes(), colors)
+        self.assertTrue((theme/'.git').is_dir())
+        self.assertEqual((theme/'README.md').read_text(), 'keep\n')
+        self.assertTrue((theme/'plugins/dark-r.workspaces').is_dir())
+        self.assertTrue((self.home/'.config/omarchy/plugins/dark-r.workspaces').is_dir())
+        self.assert_gtk4_hooks()
+    def test_theme_checkout_light_leaves_the_bar(self):
+        theme = self.place_checkout()
+        before = self.shell.read_text()
+        record = self.install(source=theme, theme_only=True)
+        self.assertTrue(record['theme_checkout'])
+        self.assertEqual(self.shell.read_text(), before)
+        self.assertFalse((self.home/'.config/omarchy/plugins/dark-r.workspaces').exists())
+        self.assert_gtk4_hooks()
+        self.assertTrue((theme/'.git').is_dir())
+    def test_gitdir_file_counts_as_a_checkout(self):
+        theme = self.place_checkout()
+        (theme/'.git').rmdir()
+        (theme/'.git').write_text('gitdir: /somewhere\n')
+        record = self.install(source=theme, theme_only=True)
+        self.assertTrue(record['theme_checkout'])
+        self.assertEqual((theme/'.git').read_text(), 'gitdir: /somewhere\n')
+        self.assertFalse(any(entry['path'].endswith('/themes/dark-r') for entry in record['targets']))
+    def test_other_directory_refuses_to_replace_a_theme_checkout(self):
+        theme = self.place_checkout()
+        with self.assertRaises(RuntimeError) as caught:
+            self.install()
+        self.assertIn('git checkout', str(caught.exception))
+        self.assertTrue((theme/'.git').is_dir())
+        self.assertEqual((theme/'README.md').read_text(), 'keep\n')
+        self.assertFalse((self.home/'.local/state/omarchy-dark-r/install.json').exists())
+        self.assertFalse((self.home/'.config/omarchy/plugins/dark-r.workspaces').exists())
+    def test_theme_checkout_reinstall_skips_theme_files(self):
+        theme = self.place_checkout()
+        self.install(source=theme)
+        (theme/'colors.toml').write_text('local palette\n')
+        qml = theme/'plugins/dark-r.stars/Stars.qml'
+        qml.write_text(qml.read_text() + '\n// trail\n')
+        record = self.install(source=theme, reinstall=True)
+        self.assertTrue(record['theme_checkout'])
+        self.assertEqual((theme/'colors.toml').read_text(), 'local palette\n')
+        self.assertTrue((theme/'.git').is_dir())
+        installed = self.home/'.config/omarchy/plugins/dark-r.stars/Stars.qml'
+        self.assertIn('// trail', installed.read_text())
+    def test_reinstall_adopts_a_checkout_over_a_copied_theme(self):
+        source = self.source_copy()
+        self.install(source=source)
+        theme = self.home/'.config/omarchy/themes/dark-r'
+        shutil.rmtree(theme)
+        shutil.copytree(source, theme)
+        (theme/'.git').mkdir()
+        (theme/'keep.txt').write_text('keep\n')
+        record = self.install(source=theme, reinstall=True)
+        self.assertTrue(record['theme_checkout'])
+        self.assertEqual((theme/'keep.txt').read_text(), 'keep\n')
+        self.assertTrue((theme/'.git').is_dir())
+        self.assertFalse(any(entry['path'].endswith('/themes/dark-r') for entry in record['targets']))
+        self.assertTrue((self.home/'.config/omarchy/plugins/dark-r.workspaces').is_dir())
+    def test_theme_checkout_uninstall_leaves_the_theme(self):
+        theme = self.place_checkout()
+        self.current.write_text('dark-r\n')
+        self.install(source=theme)
+        seen = []
+        def run(cmd, **kwargs):
+            seen.append(list(cmd))
+            if list(cmd)[:2] == ['hyprctl', 'configerrors']:
+                return subprocess.CompletedProcess(cmd, 0, stdout='ok', stderr='')
+            return subprocess.CompletedProcess(cmd, 0, stdout='', stderr='')
+        with patch.object(m.subprocess, 'run', side_effect=run), patch.object(m, 'check_hyprland'):
+            record = m.uninstall(self.home, source=theme)
+        self.assertTrue(record['theme_checkout'])
+        self.assertFalse(any(cmd[:3] == ['omarchy', 'theme', 'set'] for cmd in seen))
+        self.assertTrue((theme/'.git').is_dir())
+        self.assertTrue((theme/'colors.toml').is_file())
+        self.assertTrue((theme/'plugins/dark-r.workspaces').is_dir())
+        self.assertFalse((self.home/'.config/omarchy/plugins/dark-r.workspaces').exists())
+        self.assertFalse((self.home/'.config/omarchy/hooks/theme-set.d/dark-r-gtk4.sh').exists())
+        self.assertFalse((self.home/'.local/state/omarchy-dark-r/install.json').exists())
     def test_symlink_target_rejected(self):
         target = Path(self.tmp.name)/'important';target.mkdir()
         p = self.home/'.config/omarchy/themes/dark-r';p.parent.mkdir(parents=True)

@@ -1,6 +1,6 @@
 # Maintainer notes
 
-Working notes for the maintainer. Not user documentation. Last reviewed 2026-11-18.
+Working notes for the maintainer. Not user documentation. Last reviewed 2026-11-20.
 
 ## Direction
 
@@ -15,8 +15,10 @@ language at <https://www.enterprise-r.com/showcase/>. The showcase, and its
 theme and the showcase disagree, the theme changes, unless we decide the
 showcase should.
 
-Plan: develop here in one repo for now, then split into a theme repo and an
-add-on repo, and rename to `dark-r` after the split (see Roadmap).
+Plan: one repository, checked out as the theme. `omarchy theme install` of
+`omarchy-dark-r-theme` clones it to `~/.config/omarchy/themes/dark-r` and
+applies the palette. `./install.sh` from that checkout adds the hooks and
+the bar and does not replace the checkout (see Roadmap, phase 3).
 
 ## Status
 
@@ -186,17 +188,36 @@ keyboard cursor is a solid amber outline and the chosen row has sage text.
 - [ ] A wallpaper set that fits Dark-R (the current one is the LCARS warp
       image, AI-generated).
 
-### Phase 3: split and rename
+### Phase 3: one repo, checked out as the theme
 
-- [ ] `omarchy-dark-r-theme`: theme files only, at the repo root, so
-      `omarchy theme install <url>` gives the theme `dark-r`.
-- [ ] This repo becomes the add-on (bar, hooks, installer). Its installer
-      requires or installs the theme instead of copying it.
+Decided 2026-11-20: do not split. The palette, the hooks, and the bar move
+together. A second repo would fork `colors.toml`.
+
+`omarchy theme install` clones this repo into `~/.config/omarchy/themes/<name>`
+and stages color files from it. The name drops a leading `omarchy-` and a
+trailing `-theme`, so the GitHub repo has to be `omarchy-dark-r-theme` for
+the theme to be `dark-r`. The clone's `.git` makes `omarchy theme set` drop
+every `*.lua` file, including `hyprland.lua`. Border colors already live in
+`colors.toml`. Gaps, rounding, and shadow in `hyprland.lua` apply only when
+this installer owns a copied theme directory, which is the path used from a
+separate checkout.
+
+- [x] Installer: a theme directory with `.git` is a checkout. Install,
+      reinstall, and uninstall add or remove hooks and plugins only, and
+      record `theme_checkout`. Uninstall does not switch the theme.
+      Running the installer from any other directory is refused, so the
+      checkout is not deleted. A copied theme that later becomes a checkout
+      is adopted on reinstall.
 - [x] Rename `lcars` to `dark-r` in code: theme directory, `omarchy-dark-r`
       state path, CSS markers, hook names, plugin IDs (`dark-r.*`). Done
       2026-11-19 without a migration path: the maintainer's machine was the
       only install and was migrated by hand. The repo itself is not renamed yet.
-- [ ] Rewrite the README; credit the original LCARS work in one line.
+- [ ] Rename the GitHub repo to `omarchy-dark-r-theme`. The current name
+      would install as the theme `lcars`.
+- [ ] Rewrite the README around `omarchy theme install`, then `./install.sh`
+      from the checkout. Credit the original LCARS work in one line.
+      Tell people to update with `git pull`. A second `omarchy theme install`
+      deletes the checkout.
 
 ### Phase 4: upstream
 

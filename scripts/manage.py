@@ -3,6 +3,12 @@
 
 --light installs the theme and application colors and leaves the bar alone.
 The default install also replaces bar widgets.
+
+When this repository is the theme checkout (omarchy theme install leaves it
+at ~/.config/omarchy/themes/dark-r with a .git directory or gitdir file),
+the installer only adds hooks and, unless --light, bar plugins. It does not
+replace that directory. Update the theme with git pull. A second
+omarchy theme install deletes the checkout.
 """
 import argparse
 import copy
@@ -19,14 +25,17 @@ ROOT = Path(__file__).resolve().parents[1]
 THEME = 'dark-r'
 # Uninstall switches here when the theme active before install is gone.
 FALLBACK_THEME = 'tokyo-night'
-# The bar label install writes. The older stardate string is still recognized
-# on uninstall so a label from a previous edition is not left behind.
+# Formats an older install wrote into shell.json. The Dark-R clock no longer
+# reads them; uninstall still puts the previous label back on omarchy.clock.
 THEME_CLOCK_FORMAT = 'yyyyMM.dd ddd HH:mm'
 THEME_CLOCK_FORMATS = {"'STARDATE' ddd HH:mm", THEME_CLOCK_FORMAT}
 # Used when the label from before install was itself a theme label.
 STOCK_CLOCK_FORMAT = 'dddd HH:mm'
 SOURCES = ['menu', 'clock', 'workspaces', 'weather', 'keyboard-layout', 'system-update', 'indicators']
 # Terminal configs are not shipped: Omarchy renders them from colors.toml.
+# hyprland.lua is copied only when this installer owns the theme directory.
+# omarchy theme set drops every .lua file from a git checkout, so a theme
+# installed with omarchy theme install takes its border colors from colors.toml.
 THEME_FILES = ['colors.toml', 'shell.toml', 'hyprland.lua', 'icons.theme']
 # Always shipped with the palette so GTK4/libadwaita apps can follow Dark-R.
 GTK4_HOOK_PY = 'dark-r-gtk4-libadwaita.py'
@@ -272,8 +281,6 @@ def patch_shell(original):
                 target = source.replace('omarchy.', 'dark-r.', 1)
                 changed[target] = copy.deepcopy(entry)
                 entry['id'] = target
-                if target == 'dark-r.clock':
-                    entry['format'] = THEME_CLOCK_FORMAT
     anchor = d['bar'].get('centerAnchor')
     if anchor == 'omarchy.clock' and 'dark-r.clock' in changed:
         d['bar']['centerAnchor'] = 'dark-r.clock'
@@ -286,28 +293,6 @@ def patch_shell(original):
     right.append({'id': 'dark-r.plate'})
     # Menu actions still route to the native menu; the clone only styles its bar entry.
     return d, changed, placement
-
-def adopt_theme_clock_format(current, record):
-    """Write the theme label when the clock still shows the pre-install one.
-
-    A label chosen after install stays. Returns a new document, or None when
-    the shell should be left alone.
-    """
-    layout = current.get('bar', {}).get('layout')
-    if not isinstance(layout, dict):
-        return None
-    section, index = find_entry(layout, 'dark-r.clock')
-    if section is None:
-        return None
-    entry = layout[section][index]
-    if not isinstance(entry, dict) or entry.get('format') in THEME_CLOCK_FORMATS:
-        return None
-    before = replaced_entry('dark-r.clock', record) or {}
-    if entry.get('format') != before.get('format'):
-        return None
-    updated = copy.deepcopy(current)
-    updated['bar']['layout'][section][index]['format'] = THEME_CLOCK_FORMAT
-    return updated
 
 def replaced_entry(target, record):
     """The entry a dark-r widget replaced, also for widgets added after install."""
@@ -378,6 +363,33 @@ def check_hyprland():
 
 def paths(home):
     return home / '.config/omarchy', home / '.local/state/omarchy-dark-r'
+
+def theme_directory(config):
+    return config / 'themes' / THEME
+
+def is_theme_checkout(path):
+    """True when Omarchy cloned the theme here. Do not delete or replace it.
+
+    A worktree stores a gitdir file at .git rather than a directory.
+    A symlink is the user's own theme and is left to the existing refusal.
+    """
+    return path.is_dir() and not path.is_symlink() and (path / '.git').exists()
+
+def same_path(left, right):
+    return left.resolve() == right.resolve()
+
+def require_checkout_source(source, installed):
+    if same_path(source, installed):
+        return
+    raise RuntimeError(
+        'The Dark-R theme at ' + str(installed) + ' is a git checkout. '
+        'Run ./install.sh from that directory. The installer does not replace it. '
+        'Update the theme with git pull. A second omarchy theme install deletes the checkout.'
+    )
+
+def without_theme_target(targets, config):
+    installed = theme_directory(config)
+    return [entry for entry in targets if not same_path(Path(entry['path']), installed)]
 
 def populate_stage(stage, source):
     theme_stage = stage / THEME
@@ -504,7 +516,13 @@ def install(home, source=ROOT, theme_only=False, apply=True, omarchy_path=None, 
     stage.mkdir(parents=True)
     try:
         theme_stage = populate_stage(stage, source)
-        targets = [(theme_stage, config / 'themes' / THEME)]
+        installed = theme_directory(config)
+        checkout = is_theme_checkout(installed)
+        if checkout:
+            require_checkout_source(source, installed)
+        # The theme target is omitted for a checkout: remove() would delete
+        # .git, plugins/, and scripts/ before the extensions were copied.
+        targets = [] if checkout else [(theme_stage, installed)]
         if not theme_only:
             for plugin in sorted((source / 'plugins').iterdir()):
                 targets.append((plugin, config / 'plugins' / plugin.name))
@@ -518,7 +536,7 @@ def install(home, source=ROOT, theme_only=False, apply=True, omarchy_path=None, 
         if not theme_only and shell_file.is_symlink() and not Path(os.path.realpath(shell_file)).is_file():
             raise RuntimeError('Refusing to replace a symlinked shell.json.')
         backup.mkdir(parents=True)
-        record = {'version': 1, 'previous_theme': previous_theme, 'before_shell': before, 'replaced': replaced, 'bar_place': placement, 'theme_only': theme_only, 'backup': str(backup), 'targets': []}
+        record = {'version': 1, 'previous_theme': previous_theme, 'before_shell': before, 'replaced': replaced, 'bar_place': placement, 'theme_only': theme_only, 'theme_checkout': checkout, 'backup': str(backup), 'targets': []}
         if before is not None:
             write_json(backup / 'shell.json', before)
         try:
@@ -556,10 +574,9 @@ def install(home, source=ROOT, theme_only=False, apply=True, omarchy_path=None, 
 def refresh(home, source, apply):
     """Replace managed theme, plugin, and hook files from source, then apply Dark-R.
 
-    Shell layout and the options recorded at first install stay as they are.
-    The theme clock label is written when the clock still shows the label from
-    before install. A managed file whose contents differ from the install
-    record stops the refresh.
+    Shell layout and the options recorded at first install stay as they are,
+    including the clock format. The Dark-R clock draws its own label. A managed
+    file whose contents differ from the install record stops the refresh.
     """
     state = paths(home)[1]
     record_file = state / 'install.json'
@@ -569,14 +586,21 @@ def refresh(home, source, apply):
         raise RuntimeError('Unsupported Dark-R install record.')
     theme_only = bool(record.get('theme_only'))
     config = paths(home)[0]
+    installed = theme_directory(config)
+    # A later omarchy theme install replaces an installer-owned copy with the
+    # git checkout. Adopt that checkout instead of copying the theme again.
+    if is_theme_checkout(installed):
+        require_checkout_source(source, installed)
+        record['theme_checkout'] = True
+        record['targets'] = without_theme_target(record['targets'], config)
+    elif record.get('theme_checkout'):
+        record['targets'] = without_theme_target(record['targets'], config)
     stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')
     stage = state / ('stage-' + stamp)
     snapshot = state / ('reinstall-' + stamp)
     stage.mkdir(parents=True)
     snapshot.mkdir()
     replaced = []
-    shell_file = config / 'shell.json'
-    shell_before = None
     try:
         theme_stage = populate_stage(stage, source)
         checked = []
@@ -614,16 +638,13 @@ def refresh(home, source, apply):
             snap = snapshot / str(index)
             if target.exists():
                 copy_path(target, snap)
+            if is_theme_checkout(target):
+                raise RuntimeError('Refusing to replace the theme checkout: ' + str(target))
             remove(target)
             replaced.append(index)
             copy_path(src, target)
             restore_symlinks(snap, target)
             entry['digest'] = digest(target)
-        if not theme_only and shell_file.exists():
-            updated_shell = adopt_theme_clock_format(json.loads(shell_file.read_text()), record)
-            if updated_shell is not None:
-                shell_before = shell_file.read_text()
-                write_json(shell_file, updated_shell)
         write_json(record_file, record)
         if apply:
             apply_theme(theme_only)
@@ -634,8 +655,6 @@ def refresh(home, source, apply):
             remove(target)
             if snap.exists():
                 copy_path(snap, target)
-        if shell_before is not None:
-            shell_file.write_text(shell_before)
         if replaced:
             record_file.write_text(record_text)
             if apply:
@@ -665,12 +684,19 @@ def uninstall(home, apply=True, source=ROOT):
     record = json.loads(record_file.read_text())
     # A file that matches this checkout is the theme, including a copy that was
     # updated without a reinstall. Only a real hand edit stops uninstall.
+    # A git checkout of the theme is not one of those files: uninstall removes
+    # hooks and plugins and leaves the checkout for omarchy theme remove.
+    installed = theme_directory(config)
+    checkout = bool(record.get('theme_checkout')) or is_theme_checkout(installed)
+    if is_theme_checkout(installed):
+        require_checkout_source(source, installed)
+    targets = without_theme_target(record['targets'], config) if checkout else record['targets']
     stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')
     stage = state / ('uninstall-check-' + stamp)
     stage.mkdir(parents=True)
     try:
         theme_stage = populate_stage(stage, source)
-        for entry in record['targets']:
+        for entry in targets:
             target = Path(entry['path'])
             incoming = None
             if not target.is_symlink():
@@ -684,16 +710,19 @@ def uninstall(home, apply=True, source=ROOT):
         shutil.rmtree(stage, ignore_errors=True)
     active_file = home / '.local/state/omarchy/current/theme.name'
     active = active_file.read_text().strip() if active_file.exists() else ''
-    if apply and active == THEME:
+    if apply and active == THEME and not checkout:
         # Switch while the theme files still exist: a failure here leaves the
-        # install whole, and the theme-set hooks clear themselves.
+        # install whole, and the theme-set hooks clear themselves. A checkout
+        # stays the active theme; only the extensions come out.
         subprocess.run(['omarchy', 'theme', 'set', restore_theme(home, record.get('previous_theme'))], check=True)
     shell_file = config / 'shell.json'
     current = json.loads(shell_file.read_text()) if shell_file.exists() else {}
     if not record['theme_only']:
         write_json(shell_file, unpatch_shell(current, record, stock_clock_format()))
-    for entry in reversed(record['targets']):
+    for entry in reversed(targets):
         target = Path(entry['path'])
+        if is_theme_checkout(target):
+            raise RuntimeError('Refusing to remove the theme checkout: ' + str(target))
         remove(target)
         if entry['saved']:
             copy_path(Path(entry['saved']), target)
@@ -708,6 +737,8 @@ def uninstall(home, apply=True, source=ROOT):
         clear_gtk3(home)
         clear_gtk4(home)
         clear_firefox(home)
+    if checkout:
+        record['theme_checkout'] = True
     record_file.unlink()
     return record
 
@@ -729,11 +760,21 @@ def main():
     try:
         if args.uninstall:
             record = uninstall(Path.home(), apply=not args.no_apply)
-            print('Dark-R uninstalled. Backup retained:', record['backup'])
+            if record.get('theme_checkout'):
+                print('Dark-R extensions removed. The theme checkout was left in place. Backup retained:', record['backup'])
+            else:
+                print('Dark-R uninstalled. Backup retained:', record['backup'])
         else:
             record = install(Path.home(), theme_only=light, apply=not args.no_apply, reinstall=args.reinstall)
-            if args.reinstall:
+            if args.reinstall and record.get('theme_checkout'):
+                print('Dark-R extensions reinstalled. The theme checkout was left in place.')
+            elif args.reinstall:
                 print('Dark-R reinstalled. Restart applications if they do not live-reload their theme.')
+            elif record.get('theme_checkout') and light:
+                print('Dark-R application colors installed. The theme checkout was left in place. Backup:', record['backup'])
+            elif record.get('theme_checkout'):
+                print('Dark-R bar installed. The theme checkout was left in place. Backup:', record['backup'])
+                print('Existing custom widgets were preserved. Restart applications if they do not live-reload their theme.')
             elif light:
                 print('Dark-R installed (light). Backup:', record['backup'])
                 print('The theme and application colors are in place. The bar is unchanged.')

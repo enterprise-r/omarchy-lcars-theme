@@ -36,8 +36,10 @@ Terminals on the wallpaper. The text in this shot is a demo.
 - GTK 3, GTK 4 / libadwaita, Firefox chrome, and a VS Code surface split, written while LCARS is active and cleared when you leave it
 
 Menu, calendar, workspace switching, network, audio, brightness, and battery
-keep working. LCARS adds no network service and no audio. The clock label
-is `yyyyMM.dd ddd HH:mm`. Uninstall restores the label from before install.
+keep working. LCARS adds no network service and no audio. While the Dark-R
+clock is on the bar it always shows `yyyyMM.dd ddd HH:mm`, and the clock menu
+does not change it. Uninstall puts Omarchy's clock back with the label it had
+before install.
 
 ## Install the complete experience
 
