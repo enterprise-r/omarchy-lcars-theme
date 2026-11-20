@@ -62,8 +62,9 @@ BarWidget {
 
         bar: root.bar
         text: root.darkR ? String(modelData).padStart(2, "0") : (focused ? "\uDB85\uDCFB" : (modelData === 10 ? "0" : String(modelData)))
-        // The active crumb is the dark border color, so its number is light.
-        foreground: root.darkR ? (focused ? "#fff3e6" : "#0c040f") : (root.bar ? root.bar.barForeground : Color.foreground)
+        // An empty crumb is the dark border color, so its number is light.
+        // Hover fills an inactive crumb with bright green, which needs dark text.
+        foreground: root.darkR ? ((focused || occupied || tooltipHovered) ? "#0c040f" : "#fff3e6") : (root.bar ? root.bar.barForeground : Color.foreground)
         tooltipText: "Workspace " + modelData + (occupied ? " · " + workspace.toplevels.values.length + " windows" : " · empty")
         opacity: root.darkR ? 1 : (occupied || focused ? 1 : 0.5)
         horizontalMargin: 6
@@ -82,11 +83,12 @@ BarWidget {
           bottomLeftRadius: topLeftRadius
           topRightRadius: segment.modelData === root.workspaceIds()[root.workspaceIds().length - 1] ? Style.cornerRadius : Math.min(2, Style.cornerRadius)
           bottomRightRadius: topRightRadius
-          // Crumbs: the current workspace is --ui-border. Occupied uses the dim
-          // foreground, empty uses sage. Hover is amber.
-          color: segment.focused ? "#3f2c53" : (segment.occupied ? "#9385a5" : "#77af8a")
-          border.width: (segment.tooltipHovered && !segment.focused) ? 1 : 0
-          border.color: "#f0a202"
+          // Crumbs: the current workspace is sage, outlined in the same cyan
+          // as the active window. Occupied uses the dim foreground, empty
+          // uses --ui-border. Hover on an inactive crumb is bright green, with no border.
+          color: segment.focused ? "#77af8a" : (segment.tooltipHovered ? "#9add6d" : (segment.occupied ? "#9385a5" : "#3f2c53"))
+          border.width: segment.focused ? 1 : 0
+          border.color: "#96c5cf"
           Behavior on color { ColorAnimation { duration: 120 } }
         }
       }

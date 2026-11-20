@@ -39,7 +39,9 @@ BarWidget {
       // Same curve as the window corners. Style.cornerRadius tracks
       // Hyprland's decoration:rounding.
       radius: Style.cornerRadius
-      color: "#77af8a"
+      // Resting sage. Hover matches an inactive workspace crumb: bright green, no border.
+      color: button.tooltipHovered ? "#9add6d" : "#77af8a"
+      Behavior on color { ColorAnimation { duration: 120 } }
     }
     Text {
       visible: root.darkR
