@@ -36,7 +36,9 @@ BarWidget {
       anchors.right: parent.right
       anchors.top: parent.top
       height: parent.height - 2
-      radius: 12
+      // Same curve as the window corners. Style.cornerRadius tracks
+      // Hyprland's decoration:rounding.
+      radius: Style.cornerRadius
       color: "#77af8a"
     }
     Text {

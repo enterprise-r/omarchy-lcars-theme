@@ -155,7 +155,7 @@ BarWidget {
     labelVisible: !root.vertical
     hasVisualContent: root.vertical ? root.verticalLines.length > 0 : text !== ""
     fixedHeight: root.vertical ? root.verticalLines.length * Style.bar.iconSlot : -1
-    // Clears the capsule ends. Plate height and radius match the menu pill.
+    // Clears the rounded ends. Plate height and radius match the menu pill.
     horizontalMargin: root.darkR ? 16 : 8.75
     verticalPadding: 8.75
 
@@ -172,7 +172,7 @@ BarWidget {
       anchors.right: parent.right
       anchors.top: parent.top
       height: parent.height - 2
-      radius: 12
+      radius: Style.cornerRadius
       // Same as an empty workspace chip.
       color: "#9385a5"
     }

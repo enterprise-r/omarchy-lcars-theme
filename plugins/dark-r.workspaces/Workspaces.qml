@@ -77,9 +77,9 @@ BarWidget {
           anchors.top: parent.top
           width: parent.width
           height: parent.height - 2
-          topLeftRadius: segment.modelData === 1 ? 12 : 2
+          topLeftRadius: segment.modelData === 1 ? Style.cornerRadius : Math.min(2, Style.cornerRadius)
           bottomLeftRadius: topLeftRadius
-          topRightRadius: segment.modelData === root.workspaceIds()[root.workspaceIds().length - 1] ? 12 : 2
+          topRightRadius: segment.modelData === root.workspaceIds()[root.workspaceIds().length - 1] ? Style.cornerRadius : Math.min(2, Style.cornerRadius)
           bottomRightRadius: topRightRadius
           // Dark-R crumbs: the current one is cyan, the space in view, as the
           // active window border; workspaces with windows are sage. Empty

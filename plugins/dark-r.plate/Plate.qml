@@ -164,7 +164,7 @@ BarWidget {
     // to the screen edge; the modules themselves stay where they are.
     plateRect.width = Math.max(0, surface.width - left)
     plateRect.height = h
-    plateRect.radius = 12
+    plateRect.radius = Style.cornerRadius
   }
 
   onParentChanged: root.track()
@@ -208,7 +208,9 @@ BarWidget {
     id: plateRect
     z: -1
     visible: root.darkR && !root.vertical && width > 0
-    radius: 12
+    // Same curve as the window corners. place() sets 0 when the plate is a
+    // full strip, and Style.cornerRadius (Hyprland decoration:rounding) otherwise.
+    radius: Style.cornerRadius
     color: root.plateColor
   }
 }
