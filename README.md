@@ -36,8 +36,8 @@ Terminals on the wallpaper. The text in this shot is a demo.
 - GTK 3, GTK 4 / libadwaita, Firefox chrome, and a VS Code surface split, written while LCARS is active and cleared when you leave it
 
 Menu, calendar, workspace switching, network, audio, brightness, and battery
-keep working. LCARS adds no network service and no audio. The clock keeps the
-label already in your shell configuration.
+keep working. LCARS adds no network service and no audio. The clock label
+is `yyyyMM.dd ddd HH:mm`. Uninstall restores the label from before install.
 
 ## Install the complete experience
 
@@ -91,9 +91,9 @@ From this checkout:
 
 This restores replaced components and the previous theme when LCARS is still
 active. It preserves unrelated bar edits made after installation. Backups remain
-in `~/.local/state/omarchy-lcars/backups/`. Locally edited managed theme/plugin
-files are protected: uninstall stops and names the changed path so you can
-save your edits first.
+in `~/.local/state/omarchy-lcars/backups/`. A managed file that still matches
+this checkout uninstalls with the theme. A hand edit stops uninstall and names
+the path, so you can save it first.
 
 The installer writes only user configuration and its own state directory. It
 does not modify `/usr/share/omarchy`, replace your lock service, or remove apps.

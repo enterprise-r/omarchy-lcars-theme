@@ -15,9 +15,11 @@ ROOT = Path(__file__).resolve().parents[1]
 THEME = 'dark-r'
 # Uninstall switches here when the theme active before install is gone.
 FALLBACK_THEME = 'tokyo-night'
-# Clock labels that belong to this theme. Uninstall replaces them with the
-# format from before install, or Omarchy's stock one.
-THEME_CLOCK_FORMATS = {"'STARDATE' ddd HH:mm", "yyyyMM.dd ddd HH:mm"}
+# The bar label install writes. The older stardate string is still recognized
+# on uninstall so a label from a previous edition is not left behind.
+THEME_CLOCK_FORMAT = 'yyyyMM.dd ddd HH:mm'
+THEME_CLOCK_FORMATS = {"'STARDATE' ddd HH:mm", THEME_CLOCK_FORMAT}
+# Used when the label from before install was itself a theme label.
 STOCK_CLOCK_FORMAT = 'dddd HH:mm'
 SOURCES = ['menu', 'clock', 'workspaces', 'weather', 'keyboard-layout', 'system-update', 'indicators']
 # Terminal configs are not shipped: Omarchy renders them from colors.toml.
@@ -266,6 +268,8 @@ def patch_shell(original):
                 target = source.replace('omarchy.', 'dark-r.', 1)
                 changed[target] = copy.deepcopy(entry)
                 entry['id'] = target
+                if target == 'dark-r.clock':
+                    entry['format'] = THEME_CLOCK_FORMAT
     anchor = d['bar'].get('centerAnchor')
     if anchor == 'omarchy.clock' and 'dark-r.clock' in changed:
         d['bar']['centerAnchor'] = 'dark-r.clock'
@@ -278,6 +282,28 @@ def patch_shell(original):
     right.append({'id': 'dark-r.plate'})
     # Menu actions still route to the native menu; the clone only styles its bar entry.
     return d, changed, placement
+
+def adopt_theme_clock_format(current, record):
+    """Write the theme label when the clock still shows the pre-install one.
+
+    A label chosen after install stays. Returns a new document, or None when
+    the shell should be left alone.
+    """
+    layout = current.get('bar', {}).get('layout')
+    if not isinstance(layout, dict):
+        return None
+    section, index = find_entry(layout, 'dark-r.clock')
+    if section is None:
+        return None
+    entry = layout[section][index]
+    if not isinstance(entry, dict) or entry.get('format') in THEME_CLOCK_FORMATS:
+        return None
+    before = replaced_entry('dark-r.clock', record) or {}
+    if entry.get('format') != before.get('format'):
+        return None
+    updated = copy.deepcopy(current)
+    updated['bar']['layout'][section][index]['format'] = THEME_CLOCK_FORMAT
+    return updated
 
 def replaced_entry(target, record):
     """The entry a dark-r widget replaced, also for widgets added after install."""
@@ -527,7 +553,9 @@ def refresh(home, source, apply):
     """Replace managed theme, plugin, and hook files from source, then apply Dark-R.
 
     Shell layout and the options recorded at first install stay as they are.
-    A managed file whose contents differ from the install record stops the refresh.
+    The theme clock label is written when the clock still shows the label from
+    before install. A managed file whose contents differ from the install
+    record stops the refresh.
     """
     state = paths(home)[1]
     record_file = state / 'install.json'
@@ -543,6 +571,8 @@ def refresh(home, source, apply):
     stage.mkdir(parents=True)
     snapshot.mkdir()
     replaced = []
+    shell_file = config / 'shell.json'
+    shell_before = None
     try:
         theme_stage = populate_stage(stage, source)
         checked = []
@@ -585,6 +615,11 @@ def refresh(home, source, apply):
             copy_path(src, target)
             restore_symlinks(snap, target)
             entry['digest'] = digest(target)
+        if not theme_only and shell_file.exists():
+            updated_shell = adopt_theme_clock_format(json.loads(shell_file.read_text()), record)
+            if updated_shell is not None:
+                shell_before = shell_file.read_text()
+                write_json(shell_file, updated_shell)
         write_json(record_file, record)
         if apply:
             apply_theme(theme_only)
@@ -595,6 +630,8 @@ def refresh(home, source, apply):
             remove(target)
             if snap.exists():
                 copy_path(snap, target)
+        if shell_before is not None:
+            shell_file.write_text(shell_before)
         if replaced:
             record_file.write_text(record_text)
             if apply:
@@ -616,16 +653,31 @@ def restore_theme(home, previous, omarchy_path=None):
                 return previous
     return FALLBACK_THEME
 
-def uninstall(home, apply=True):
+def uninstall(home, apply=True, source=ROOT):
     config, state = paths(home)
     record_file = state / 'install.json'
     if not record_file.exists():
         raise RuntimeError('No managed Dark-R installation found.')
     record = json.loads(record_file.read_text())
-    for entry in record['targets']:
-        target = Path(entry['path'])
-        if locally_edited(target, entry.get('digest')):
-            raise RuntimeError('A managed file has local edits. Back up and restore it before uninstalling: ' + str(target))
+    # A file that matches this checkout is the theme, including a copy that was
+    # updated without a reinstall. Only a real hand edit stops uninstall.
+    stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')
+    stage = state / ('uninstall-check-' + stamp)
+    stage.mkdir(parents=True)
+    try:
+        theme_stage = populate_stage(stage, source)
+        for entry in record['targets']:
+            target = Path(entry['path'])
+            incoming = None
+            if not target.is_symlink():
+                try:
+                    incoming = managed_source(target, theme_stage, source, stage)
+                except RuntimeError:
+                    incoming = None
+            if locally_edited(target, entry.get('digest'), incoming):
+                raise RuntimeError('A managed file has local edits. Back up and restore it before uninstalling: ' + str(target))
+    finally:
+        shutil.rmtree(stage, ignore_errors=True)
     active_file = home / '.local/state/omarchy/current/theme.name'
     active = active_file.read_text().strip() if active_file.exists() else ''
     if apply and active == THEME:

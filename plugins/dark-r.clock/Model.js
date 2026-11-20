@@ -19,6 +19,7 @@ var WEEKDAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "fr
 // without one: ISO 8601 writes time on a 24-hour clock, so an AM/PM variant
 // would contradict the only thing that format is for.
 var CLOCK_FORMATS = [
+  "yyyyMM.dd ddd HH:mm",
   "dddd HH:mm",
   "dddd h:mm AP",
   "HH:mm",

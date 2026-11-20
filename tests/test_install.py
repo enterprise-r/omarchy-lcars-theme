@@ -325,7 +325,7 @@ class Installation(unittest.TestCase):
         d = json.loads(self.shell.read_text())
         # keep the rest of the original test body by re-reading below marker if needed
         clock = next(x for x in d['bar']['layout']['left'] if x['id'] == 'dark-r.clock')
-        self.assertEqual(clock['format'], 'HH:mm')
+        self.assertEqual(clock['format'], m.THEME_CLOCK_FORMAT)
         ids = [x['id'] for x in d['bar']['layout']['right']]
         self.assertIn('dark-r.plate', ids)
         self.assertNotIn('dark-r.band', ids)
@@ -372,7 +372,7 @@ class Installation(unittest.TestCase):
         self.assertEqual([x['id'] for x in laid['center']], ['dark-r.workspaces'])
         self.assertEqual([x['id'] for x in laid['centerEnd']], ['omarchy.elsewhen', 'personal.after'])
         self.assertEqual(laid['left'][1]['id'], 'dark-r.clock')
-        self.assertEqual(laid['left'][1]['format'], 'HH:mm')
+        self.assertEqual(laid['left'][1]['format'], m.THEME_CLOCK_FORMAT)
         current = json.loads(self.shell.read_text())
         current['bar']['layout']['centerEnd'].append({'id': 'new.widget'})
         m.write_json(self.shell, current)
@@ -451,6 +451,36 @@ class Installation(unittest.TestCase):
         self.assertEqual(m.restore_theme(self.home, 'gone', platform), m.FALLBACK_THEME)
         self.assertEqual(m.restore_theme(self.home, 'dark-r', platform), m.FALLBACK_THEME)
         self.assertEqual(m.restore_theme(self.home, '', platform), m.FALLBACK_THEME)
+    def test_clock_format_survives_install_and_uninstall_twice(self):
+        for _ in range(2):
+            self.install()
+            clock = next(x for x in json.loads(self.shell.read_text())['bar']['layout']['left'] if x['id'] == 'dark-r.clock')
+            self.assertEqual(clock['format'], m.THEME_CLOCK_FORMAT)
+            m.uninstall(self.home, apply=False)
+            clock = json.loads(self.shell.read_text())['bar']['layout']['center'][0]
+            self.assertEqual((clock['id'], clock['format'], clock['timezone']), ('omarchy.clock', 'HH:mm', 'Europe/Zurich'))
+            self.assertFalse((self.home/'.config/omarchy/plugins/dark-r.clock').exists())
+    def test_uninstall_accepts_a_plugin_that_matches_this_checkout(self):
+        source = self.source_copy()
+        self.install(source=source)
+        plugin = self.home/'.config/omarchy/plugins/dark-r.clock/Model.js'
+        plugin.write_text(plugin.read_text() + '\n// shipped from this checkout\n')
+        shutil.copy2(plugin, source/'plugins/dark-r.clock/Model.js')
+        m.uninstall(self.home, apply=False, source=source)
+        clock = json.loads(self.shell.read_text())['bar']['layout']['center'][0]
+        self.assertEqual((clock['id'], clock['format']), ('omarchy.clock', 'HH:mm'))
+        self.assertFalse((self.home/'.local/state/omarchy-dark-r/install.json').exists())
+    def test_install_writes_the_theme_clock_format(self):
+        d = copy.deepcopy(BASE)
+        d['bar']['layout']['center'][0]['format'] = 'HH:mm:ss'
+        m.write_json(self.shell, d)
+        self.install()
+        clock = next(x for x in json.loads(self.shell.read_text())['bar']['layout']['left'] if x['id'] == 'dark-r.clock')
+        self.assertEqual(clock['format'], m.THEME_CLOCK_FORMAT)
+        self.assertEqual(clock['timezone'], 'Europe/Zurich')
+        m.uninstall(self.home, apply=False)
+        clock = json.loads(self.shell.read_text())['bar']['layout']['center'][0]
+        self.assertEqual((clock['id'], clock['format']), ('omarchy.clock', 'HH:mm:ss'))
     def test_uninstall_resets_theme_clock_formats(self):
         for before, expected in (('HH:mm', 'HH:mm'), ('yyyyMM.dd ddd HH:mm', 'dddd HH:mm')):
             with self.subTest(before=before):
@@ -518,6 +548,30 @@ class Installation(unittest.TestCase):
         self.assertEqual([x['id'] for x in restored['bar']['layout']['left']].count('dark-r.stars'), 1)
         m.uninstall(self.home, apply=False)
         self.assertEqual(personal.read_text(), 'personal palette')
+    def test_reinstall_writes_the_theme_clock_format_when_it_was_never_set(self):
+        source = self.source_copy()
+        self.install(source=source)
+        shell = json.loads(self.shell.read_text())
+        clock = next(x for x in shell['bar']['layout']['left'] if x['id'] == 'dark-r.clock')
+        clock['format'] = 'HH:mm'
+        shell['idle']['lock'] = 900
+        m.write_json(self.shell, shell)
+        self.install(source=source, reinstall=True)
+        restored = json.loads(self.shell.read_text())
+        clock = next(x for x in restored['bar']['layout']['left'] if x['id'] == 'dark-r.clock')
+        self.assertEqual(clock['format'], m.THEME_CLOCK_FORMAT)
+        self.assertEqual(clock['timezone'], 'Europe/Zurich')
+        self.assertEqual(restored['idle']['lock'], 900)
+    def test_reinstall_keeps_a_clock_label_chosen_later(self):
+        source = self.source_copy()
+        self.install(source=source)
+        shell = json.loads(self.shell.read_text())
+        clock = next(x for x in shell['bar']['layout']['left'] if x['id'] == 'dark-r.clock')
+        clock['format'] = 'HH:mm:ss'
+        m.write_json(self.shell, shell)
+        self.install(source=source, reinstall=True)
+        clock = next(x for x in json.loads(self.shell.read_text())['bar']['layout']['left'] if x['id'] == 'dark-r.clock')
+        self.assertEqual(clock['format'], 'HH:mm:ss')
     def test_reinstall_drops_old_terminal_configs(self):
         source = self.source_copy()
         self.install(source=source)
