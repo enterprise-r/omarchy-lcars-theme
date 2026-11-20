@@ -69,10 +69,12 @@ The showcase uses its own shapes and fonts, and the desktop keeps Omarchy's.
 | Hover / keyboard cursor | `--ui-accent` `#f0a202` | controls hover, launcher selected row, workspace hover |
 | Keyboard focus | `--ui-fg-bright` `#fff3e6` | controls focus |
 | Current / chosen | `--ui-green` `#77af8a` (sage) | controls selected, Omarchy menu selected row, active indicators, selected tab (GTK3, Firefox, VS Code) |
-| Active, in view | `--ui-cyan` `#96c5cf` | the space you are in: Hyprland active border, current workspace, lock field while typing, focused GTK field |
-| Occupied | `--ui-green` `#77af8a` (sage) | workspaces with windows |
+| Active, in view | `--ui-cyan` `#96c5cf` | the space you are in: Hyprland active border, lock field while typing, focused GTK field |
+| Current workspace | `--ui-border` `#3f2c53` | the workspace crumb you are in, with bright text |
+| Occupied | `--ui-fg-dark` `#9385a5` | workspace crumbs with windows |
+| Empty workspace | `--ui-green` `#77af8a` (sage) | workspace crumbs with no windows |
 | Card / panel | `--ui-bg-lighter` with `--ui-fg-dark` border | popups, tooltip, launcher, menu, notifications, polkit, lock field |
-| Dim | `--ui-fg-dark` `#9385a5` | control borders, placeholders, empty workspaces, clock chip |
+| Dim | `--ui-fg-dark` `#9385a5` | control borders, placeholders, clock chip |
 | Notices | blue info, green ok, amber warn, red error | desktop notifications and bar attention (amber), errors (red) |
 | App header | `--ui-border` `#3f2c53` (`.r-bar`) | libadwaita header bars, Firefox toolbar and tab strip |
 | Text selection | `--ui-border` under `--ui-fg-bright` | GTK legacy selection; VS Code editor and terminal use opaque `selection` `#3f2c53` (= `--ui-border`) |

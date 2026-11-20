@@ -173,7 +173,6 @@ BarWidget {
       anchors.top: parent.top
       height: parent.height - 2
       radius: Style.cornerRadius
-      // Same as an empty workspace chip.
       color: "#9385a5"
     }
     Column {

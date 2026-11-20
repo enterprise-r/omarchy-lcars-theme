@@ -62,7 +62,8 @@ BarWidget {
 
         bar: root.bar
         text: root.darkR ? String(modelData).padStart(2, "0") : (focused ? "\uDB85\uDCFB" : (modelData === 10 ? "0" : String(modelData)))
-        foreground: root.darkR ? "#0c040f" : (root.bar ? root.bar.barForeground : Color.foreground)
+        // The active crumb is the dark border color, so its number is light.
+        foreground: root.darkR ? (focused ? "#fff3e6" : "#0c040f") : (root.bar ? root.bar.barForeground : Color.foreground)
         tooltipText: "Workspace " + modelData + (occupied ? " · " + workspace.toplevels.values.length + " windows" : " · empty")
         opacity: root.darkR ? 1 : (occupied || focused ? 1 : 0.5)
         horizontalMargin: 6
@@ -81,10 +82,9 @@ BarWidget {
           bottomLeftRadius: topLeftRadius
           topRightRadius: segment.modelData === root.workspaceIds()[root.workspaceIds().length - 1] ? Style.cornerRadius : Math.min(2, Style.cornerRadius)
           bottomRightRadius: topRightRadius
-          // Dark-R crumbs: the current one is cyan, the space in view, as the
-          // active window border; workspaces with windows are sage. Empty
-          // workspaces use the dim foreground; hover is amber.
-          color: segment.focused ? "#96c5cf" : (segment.occupied ? "#77af8a" : "#9385a5")
+          // Crumbs: the current workspace is --ui-border. Occupied uses the dim
+          // foreground, empty uses sage. Hover is amber.
+          color: segment.focused ? "#3f2c53" : (segment.occupied ? "#9385a5" : "#77af8a")
           border.width: (segment.tooltipHovered && !segment.focused) ? 1 : 0
           border.color: "#f0a202"
           Behavior on color { ColorAnimation { duration: 120 } }

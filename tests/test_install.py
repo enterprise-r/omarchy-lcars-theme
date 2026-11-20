@@ -925,7 +925,9 @@ class PaletteHooks(unittest.TestCase):
         self.assertEqual(shell['menu']['selected-background'], colors['green'])
         self.assertEqual(shell['launcher']['selected-background'], colors['accent'])
         workspaces = (ROOT/'plugins/dark-r.workspaces/Workspaces.qml').read_text()
-        self.assertIn('segment.focused ? "#96c5cf" : (segment.occupied ? "#77af8a"', workspaces)
+        # Active crumb is --ui-border. Occupied and empty have switched:
+        # occupied is the dim foreground, empty is sage.
+        self.assertIn('segment.focused ? "#3f2c53" : (segment.occupied ? "#9385a5" : "#77af8a")', workspaces)
         self.assertEqual(shell['notifications']['border'], colors['accent'])
     def test_text_on_fills_reads(self):
         r = self.gtk.roles(self.colors)
