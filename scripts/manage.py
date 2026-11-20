@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Install, reinstall, or uninstall Dark-R without replacing unrelated shell configuration."""
+"""Install, reinstall, or uninstall Dark-R without replacing unrelated shell configuration.
+
+--light installs the theme and application colors and leaves the bar alone.
+The default install also replaces bar widgets.
+"""
 import argparse
 import copy
 import datetime
@@ -259,7 +263,7 @@ def patch_shell(original):
         raise RuntimeError('Unsupported shell.json format; no configuration was changed.')
     # This edition is designed for horizontal bars; do not silently move a user's bar.
     if d['bar'].get('position', 'top') not in ['top', 'bottom']:
-        raise RuntimeError('Dark-R requires a top or bottom bar. Move your bar first, or use --theme-only.')
+        raise RuntimeError('Dark-R requires a top or bottom bar. Move your bar first, or use --light to keep the standard bar.')
     changed = {}
     for entries in d['bar']['layout'].values():
         for entry in entries:
@@ -484,7 +488,7 @@ def install(home, source=ROOT, theme_only=False, apply=True, omarchy_path=None, 
         raise RuntimeError('No managed Dark-R installation found.')
     omarchy_path = omarchy_path or Path(os.environ.get('OMARCHY_PATH', '/usr/share/omarchy'))
     if not theme_only and not (omarchy_path / 'shell/Ui/PluginBarApi.qml').exists():
-        raise RuntimeError('The complete experience requires the Omarchy 4 Quickshell shell. Use --theme-only for the palette.')
+        raise RuntimeError('The complete experience requires the Omarchy 4 Quickshell shell. Use --light to install the theme without bar changes.')
     shell_file = config / 'shell.json'
     before = json.loads(shell_file.read_text()) if shell_file.exists() else None
     if not theme_only and before is None:
@@ -711,23 +715,28 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--uninstall', action='store_true')
     p.add_argument('--reinstall', action='store_true', help='refresh managed files from this checkout and apply Dark-R again')
-    p.add_argument('--theme-only', action='store_true')
+    p.add_argument('--light', action='store_true', help='install the theme and application colors; leave the standard bar unchanged')
+    p.add_argument('--theme-only', action='store_true', help='same as --light')
     p.add_argument('--no-apply', action='store_true', help='install files without reloading the live desktop')
     args = p.parse_args()
     if os.geteuid() == 0:
         p.error('Run as your desktop user, without sudo.')
+    light = args.light or args.theme_only
     if args.reinstall and args.uninstall:
         p.error('--reinstall cannot be combined with --uninstall.')
-    if args.reinstall and args.theme_only:
+    if args.reinstall and light:
         p.error('--reinstall keeps the original install options. Uninstall first to change them.')
     try:
         if args.uninstall:
             record = uninstall(Path.home(), apply=not args.no_apply)
             print('Dark-R uninstalled. Backup retained:', record['backup'])
         else:
-            record = install(Path.home(), theme_only=args.theme_only, apply=not args.no_apply, reinstall=args.reinstall)
+            record = install(Path.home(), theme_only=light, apply=not args.no_apply, reinstall=args.reinstall)
             if args.reinstall:
                 print('Dark-R reinstalled. Restart applications if they do not live-reload their theme.')
+            elif light:
+                print('Dark-R installed (light). Backup:', record['backup'])
+                print('The theme and application colors are in place. The bar is unchanged.')
             else:
                 print('Dark-R installed. Backup:', record['backup'])
                 print('Existing custom widgets were preserved. Restart applications if they do not live-reload their theme.')

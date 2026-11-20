@@ -52,33 +52,40 @@ cd omarchy-lcars-theme
 ./install.sh
 ```
 
-Run as your normal desktop user. The installer applies the theme, replaces
-standard bar widgets with styled copies, and adds the full-width warp effect.
-**Existing custom widgets and shortcuts stay yours.** LCARS puts the calendar
-where the workspace indicator was and centers the workspace indicator. A custom
-replacement of either widget is left where you put it, so your bar may differ
-from the screenshots.
+Run as your normal desktop user. The complete installer applies the theme,
+replaces standard bar widgets with styled copies, and adds the full-width warp
+effect. **Existing custom widgets and shortcuts stay yours.** LCARS puts the
+calendar where the workspace indicator was and centers the workspace indicator.
+A custom replacement of either widget is left where you put it, so your bar may
+differ from the screenshots.
 
 ## Choose your level of immersion
 
 ```bash
-./install.sh --theme-only         # Palette and wallpaper, without bar changes
+./install.sh --light              # All theming. The standard bar stays as it is.
+./install.sh                      # Theming plus the Dark-R bar
 ./install.sh --reinstall          # Refresh an existing install and apply it
 ```
 
-To switch between the palette-only and complete installs later,
-uninstall and install again. `./install.sh --reinstall` copies this checkout
-over the managed theme, plugins, and hooks, then applies LCARS again. Your
-shell layout and the original options stay in place. Reinstall stops if a
-managed file has local edits. The installer still refuses to overwrite another
-plugin that uses an `lcars.*` name.
+`--light` installs the palette, wallpaper, Hyprland look, shell colors, and the
+GTK, Firefox, and VS Code hooks. It does not replace bar widgets, move them,
+add the plate or the starfield, or change the clock. The bar stays the standard
+Omarchy bar, colored by the theme. `--theme-only` is the same install.
+
+To switch between the light and complete installs later, uninstall and install
+again. `./install.sh --reinstall` copies this checkout over the managed theme,
+plugins, and hooks, then applies the theme again. Your shell layout and the
+original options stay in place. Reinstall stops if a managed file has local
+edits. The installer still refuses to overwrite another plugin that uses a
+`dark-r.*` name.
 
 LCARS leaves window and terminal transparency to Omarchy. Turn on Glassy from
 the Omarchy menu if you want see-through terminals over the warp wallpaper.
 
 You can also install this repository through Omarchy's ordinary theme picker
-for the palette and wallpaper. **The complete animated bar requires running the
-installer above**: a theme URL alone does not install executable widgets.
+for the palette and wallpaper. **Application hooks and the complete bar require
+running the installer above**: a theme URL alone does not install them. Use
+`--light` when you want those hooks and the shell colors without a custom bar.
 Older desktop versions have not been verified with this palette-only route.
 
 ## Uninstall

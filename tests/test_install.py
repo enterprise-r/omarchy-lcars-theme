@@ -617,9 +617,24 @@ class Installation(unittest.TestCase):
         self.assertFalse(any(self.home.joinpath('.local/state/omarchy-dark-r').glob('reinstall-*')))
         self.assertFalse(any(self.home.joinpath('.local/state/omarchy-dark-r').glob('stage-*')))
     def test_reinstall_flag_rejects_option_changes(self):
-        with patch.object(sys, 'argv', ['manage.py', '--reinstall', '--theme-only']), patch('sys.stderr', io.StringIO()):
-            with self.assertRaises(SystemExit):
-                m.main()
+        for flag in ('--theme-only', '--light'):
+            with self.subTest(flag=flag):
+                with patch.object(sys, 'argv', ['manage.py', '--reinstall', flag]), patch('sys.stderr', io.StringIO()):
+                    with self.assertRaises(SystemExit):
+                        m.main()
+    def test_light_flag_installs_without_touching_the_bar(self):
+        with patch.object(sys, 'argv', ['manage.py', '--light', '--no-apply']), \
+             patch.object(m.Path, 'home', return_value=self.home), \
+             patch('sys.stdout', io.StringIO()) as out:
+            self.assertEqual(m.main(), 0)
+        self.assertIn('light', out.getvalue())
+        self.assertEqual(json.loads(self.shell.read_text()), BASE)
+        self.assertFalse((self.home/'.config/omarchy/plugins').exists())
+        self.assertTrue((self.home/'.config/omarchy/themes/dark-r/shell.toml').is_file())
+        self.assert_gtk4_hooks()
+        self.assert_vscode_hooks()
+        record = json.loads((self.home/'.local/state/omarchy-dark-r/install.json').read_text())
+        self.assertTrue(record['theme_only'])
     def test_conflicting_plugin_is_not_overwritten(self):
         p = self.home/'.config/omarchy/plugins/dark-r.stars/mine.qml'
         p.parent.mkdir(parents=True)
